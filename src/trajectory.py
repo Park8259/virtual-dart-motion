@@ -32,6 +32,20 @@ def normalize_vector(x, y):
 
 
 def estimate_initial_velocity(start_row, release_row, hand, velocity_scale):
+    if {
+        "throw_direction_x",
+        "throw_direction_y",
+        "throw_release_speed",
+    }.issubset(release_row.index):
+        direction_x = release_row["throw_direction_x"]
+        direction_y = release_row["throw_direction_y"]
+        release_speed = release_row["throw_release_speed"]
+        if not any(pd.isna(v) for v in [direction_x, direction_y, release_speed]):
+            vx = direction_x * release_speed * velocity_scale
+            vy = direction_y * release_speed * velocity_scale
+            speed = math.hypot(vx, vy)
+            return vx, vy, speed
+
     start_x = start_row[f"{hand}_wrist_x"]
     start_y = start_row[f"{hand}_wrist_y"]
     release_x = release_row[f"{hand}_wrist_x"]
@@ -89,6 +103,7 @@ def save_plot(points, start_row, release_row, hand, hit, plot_path, board_w, boa
 
     xs = [point["x"] for point in points]
     ys = [point["y"] for point in points]
+    endpoint = points[-1]
 
     plt.figure(figsize=(7, 7))
     plt.plot(xs, ys, marker="o", linewidth=2, markersize=3, label="Predicted trajectory")
@@ -106,9 +121,34 @@ def save_plot(points, start_row, release_row, hand, hit, plot_path, board_w, boa
         s=80,
         label="Release candidate",
     )
+    plt.scatter(
+        [endpoint["x"]],
+        [endpoint["y"]],
+        color="dodgerblue",
+        edgecolor="black",
+        s=90,
+        label="Trajectory endpoint",
+    )
+    plt.annotate(
+        "release",
+        (release_row[f"{hand}_wrist_x"], release_row[f"{hand}_wrist_y"]),
+        textcoords="offset points",
+        xytext=(8, -14),
+    )
+    plt.annotate(
+        "endpoint",
+        (endpoint["x"], endpoint["y"]),
+        textcoords="offset points",
+        xytext=(8, 8),
+    )
     plt.gca().invert_yaxis()
-    plt.xlim(0, 1)
-    plt.ylim(1, 0)
+    margin = 0.08
+    min_x = min(0, min(xs), start_row[f"{hand}_wrist_x"], release_row[f"{hand}_wrist_x"]) - margin
+    max_x = max(1, max(xs), start_row[f"{hand}_wrist_x"], release_row[f"{hand}_wrist_x"]) + margin
+    min_y = min(0, min(ys), start_row[f"{hand}_wrist_y"], release_row[f"{hand}_wrist_y"]) - margin
+    max_y = max(1, max(ys), start_row[f"{hand}_wrist_y"], release_row[f"{hand}_wrist_y"]) + margin
+    plt.xlim(min_x, max_x)
+    plt.ylim(max_y, min_y)
     plt.grid(True, alpha=0.25)
     plt.title(f"Predicted Virtual Dart Trajectory / Board Hit: {hit} on {board_w}x{board_h}")
     plt.xlabel("Normalized camera X")
@@ -209,13 +249,13 @@ def main():
     parser.add_argument(
         "--gravity",
         type=float,
-        default=0.9,
+        default=0.25,
         help="Virtual downward acceleration in normalized camera units",
     )
     parser.add_argument(
         "--duration",
         type=float,
-        default=0.35,
+        default=0.8,
         help="Virtual flight duration in seconds",
     )
     parser.add_argument(
@@ -227,7 +267,7 @@ def main():
     parser.add_argument(
         "--velocity-scale",
         type=float,
-        default=0.25,
+        default=0.8,
         help="Scale factor applied to wrist velocity before trajectory prediction",
     )
     parser.add_argument("--board-w", type=int, default=16, help="Virtual board width")
@@ -235,7 +275,7 @@ def main():
     parser.add_argument(
         "--board-scale",
         type=float,
-        default=18.0,
+        default=20.0,
         help="Scale factor from normalized trajectory displacement to board cells",
     )
     args = parser.parse_args()

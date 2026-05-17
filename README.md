@@ -140,6 +140,24 @@ python src/trajectory.py output/throw_analysis.csv \
 - `output/trajectory.csv`: 시간별 가상 궤적 좌표
 - `output/trajectory.png`: 예측된 가상 다트 궤적 이미지
 
+궤적이 너무 짧거나 과하게 길게 보이면 아래 옵션을 조절합니다.
+
+```bash
+python src/trajectory.py output/throw_analysis.csv \
+  --hand right \
+  --out output/trajectory.csv \
+  --plot output/trajectory.png \
+  --velocity-scale 0.8 \
+  --duration 0.8 \
+  --gravity 0.25 \
+  --board-scale 20
+```
+
+- `velocity-scale`: 손목 속도를 가상 다트 속도로 바꾸는 배율
+- `duration`: 가상 다트가 날아가는 시간
+- `gravity`: 화면 아래 방향으로 떨어지는 정도
+- `board-scale`: 궤적 끝점 변화를 16x16 보드 좌표로 변환하는 배율
+
 ## 전체 동작 흐름
 
 ```text

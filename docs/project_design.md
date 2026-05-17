@@ -361,7 +361,7 @@ output/trajectory.png
 2. pose_preview.mp4로 관절 인식 품질 확인
 3. throw_analysis.csv에서 릴리즈 후보 프레임 확인
 4. trajectory.png로 궤적이 자연스러운지 확인
-5. window, lookback, velocity_scale, gravity, duration, board_scale 튜닝
+5. window, lookback, direction-window, min-visibility, velocity-scale, gravity, duration, board-scale 튜닝
 6. simulate_board.py를 만들어 16x16 보드 이미지로 명중 위치 시각화
 7. ESP32 또는 LED 매트릭스와 연동
 ```
@@ -380,3 +380,37 @@ MediaPipe를 이용해 손목, 팔꿈치, 어깨 좌표를 추출한다.
 최종적으로 궤적의 도달 위치를 16x16 LED 타깃판 좌표로 변환한다.
 ```
 
+## 12. 그래프가 이상할 때 확인할 점
+
+현재 그래프가 이상하게 나오는 대표적인 이유는 다음과 같다.
+
+```text
+1. MediaPipe 손목 좌표가 특정 프레임에서 튄 경우
+2. 전체 영상에서 속도 최대 프레임만 선택해 실제 릴리즈와 어긋난 경우
+3. 이동평균 때문에 릴리즈 후보가 실제 속도 최고점보다 앞뒤로 밀린 경우
+4. 시작 프레임부터 릴리즈 프레임까지 평균 방향을 써서 최종 손목 방향과 달라진 경우
+5. velocity-scale, duration, gravity 값이 영상에 맞지 않는 경우
+```
+
+이를 보완하기 위해 현재 코드는 다음 방식을 사용한다.
+
+```text
+관절 visibility가 낮은 프레임 제외
+속도 튐을 줄이기 위한 필터 적용
+고속 구간 안에서 실제 손목 속도가 가장 큰 프레임을 릴리즈 후보로 선택
+릴리즈 직전 몇 프레임의 이동 방향을 최종 방향으로 사용
+```
+
+궤적이 너무 짧으면 다음 값을 키운다.
+
+```text
+velocity-scale
+duration
+board-scale
+```
+
+궤적이 너무 많이 아래로 떨어지면 다음 값을 줄인다.
+
+```text
+gravity
+```
