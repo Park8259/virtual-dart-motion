@@ -51,10 +51,18 @@ virtual-dart-motion/
 
 ## 설치 방법
 
+이 프로젝트는 `Python 3.9` 환경을 권장합니다. 현재 개발 환경은 `Python 3.9.6`입니다.
+
+레포를 클론합니다.
+
+```bash
+git clone https://github.com/Park8259/virtual-dart-motion.git
+```
+
 프로젝트 폴더로 이동합니다.
 
 ```bash
-cd /Users/park/Uni/26-1/IoT/project
+cd virtual-dart-motion
 ```
 
 가상환경을 생성하지 않았다면 다음 명령어로 생성합니다.
@@ -63,10 +71,16 @@ cd /Users/park/Uni/26-1/IoT/project
 python3 -m venv .venv
 ```
 
-가상환경을 실행합니다.
+macOS/Linux에서 가상환경을 실행합니다.
 
 ```bash
 source .venv/bin/activate
+```
+
+Windows PowerShell에서는 다음 명령어를 사용합니다.
+
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
 필요한 패키지를 설치합니다.
@@ -84,6 +98,8 @@ python src/check_env.py
 ## 실행 방법
 
 분석할 투척 동영상을 `videos/` 폴더에 넣습니다. 예시는 `videos/throw_test.mp4`입니다.
+
+팀원이 다른 파일명을 사용한다면 아래 명령어에서 `throw_test.mp4` 부분만 실제 파일명으로 바꾸면 됩니다.
 
 ### 1. 영상에서 관절 좌표 추출
 
@@ -180,3 +196,31 @@ MediaPipe로 팔 관절 좌표 추출
 ## 자세한 설계 문서
 
 전체 설계와 코드별 동작 흐름은 [`docs/project_design.md`](docs/project_design.md)를 참고하면 됩니다.
+
+## 팀원 실행 요약
+
+```bash
+git clone https://github.com/Park8259/virtual-dart-motion.git
+cd virtual-dart-motion
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python src/check_env.py
+```
+
+이후 촬영한 영상을 `videos/` 폴더에 넣고, 아래 순서로 실행합니다.
+
+```bash
+python src/extract_landmarks.py videos/throw_test.mp4 \
+  --out output/landmarks.csv \
+  --preview output/pose_preview.mp4
+
+python src/analyze_throw.py output/landmarks.csv \
+  --hand right \
+  --out output/throw_analysis.csv
+
+python src/trajectory.py output/throw_analysis.csv \
+  --hand right \
+  --out output/trajectory.csv \
+  --plot output/trajectory.png
+```
