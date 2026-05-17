@@ -44,7 +44,7 @@ def landmark_row(frame_index, time_sec, landmarks):
     return row
 
 
-def extract_pose(video_path, output_csv, preview_path=None):
+def extract_pose(video_path, output_csv, preview_path=None, flip_horizontal=False):
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise FileNotFoundError(f"Cannot open video: {video_path}")
@@ -98,6 +98,9 @@ def extract_pose(video_path, output_csv, preview_path=None):
             if not ok:
                 break
 
+            if flip_horizontal:
+                frame = cv2.flip(frame, 1)
+
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = pose.process(rgb)
 
@@ -126,6 +129,7 @@ def extract_pose(video_path, output_csv, preview_path=None):
         preview_writer.release()
 
     print(f"Video: {video_path}")
+    print(f"Flip horizontal: {flip_horizontal}")
     print(f"FPS: {fps:.2f}")
     print(f"Frames: {frame_index}/{total_frames}")
     print(f"Pose detected: {detected_count} frames")
@@ -148,9 +152,14 @@ def main():
         type=Path,
         help="Optional annotated preview video path",
     )
+    parser.add_argument(
+        "--flip-horizontal",
+        action="store_true",
+        help="Flip mirrored/selfie videos before running MediaPipe",
+    )
     args = parser.parse_args()
 
-    extract_pose(args.video, args.out, args.preview)
+    extract_pose(args.video, args.out, args.preview, args.flip_horizontal)
 
 
 if __name__ == "__main__":
