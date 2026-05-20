@@ -9,3 +9,5 @@ output/*
 videos/*.mov
 videos/*.mp4
 !videos/.gitkeep
+*.jpg
+venv311/

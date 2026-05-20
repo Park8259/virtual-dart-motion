@@ -18,6 +18,26 @@ def read_markers(analysis_csv):
     return df, start_rows.iloc[0], release_rows.iloc[0]
 
 
+def load_trajectory_points(trajectory_csv, width, height):
+    traj_df = pd.read_csv(trajectory_csv)
+
+    points = []
+
+    for _, row in traj_df.iterrows():
+        x = row["x"]
+        y = row["y"]
+
+        if pd.isna(x) or pd.isna(y):
+            continue
+
+        px = int(x * width)
+        py = int(y * height)
+
+        points.append((px, py))
+
+    return points
+
+
 def draw_label(frame, text, origin, color):
     x, y = origin
     cv2.putText(
@@ -58,7 +78,49 @@ def draw_wrist_marker(frame, row, hand, label, color):
     draw_label(frame, label, (px + 18, py - 12), color)
 
 
-def render_preview(video_path, analysis_csv, output_video, hand, flip_horizontal=False):
+def draw_animated_trajectory(frame, trajectory_points, release_frame, frame_index):
+    if frame_index < release_frame:
+        return
+
+    if not trajectory_points:
+        return
+
+    frames_after_release = frame_index - release_frame + 1
+
+    points_to_draw = min(
+        frames_after_release,
+        len(trajectory_points)
+    )
+
+    if points_to_draw <= 0:
+        return
+
+    for i in range(1, points_to_draw):
+        cv2.line(
+            frame,
+            trajectory_points[i - 1],
+            trajectory_points[i],
+            (0, 255, 255),
+            4,
+            cv2.LINE_AA,
+        )
+
+    current_point = trajectory_points[points_to_draw - 1]
+    cv2.circle(frame, current_point, 8, (255, 0, 0), -1)
+    cv2.circle(frame, current_point, 11, (255, 255, 255), 2)
+
+    if points_to_draw == len(trajectory_points):
+        draw_label(frame, "ENDPOINT", (current_point[0] + 12, current_point[1] - 12), (255, 0, 0))
+
+
+def render_preview(
+    video_path,
+    analysis_csv,
+    trajectory_csv,
+    output_video,
+    hand,
+    flip_horizontal=False,
+):
     df, start_row, release_row = read_markers(analysis_csv)
     frame_lookup = {int(row.frame_index): row for row in df.itertuples(index=False)}
 
@@ -74,10 +136,13 @@ def render_preview(video_path, analysis_csv, output_video, hand, flip_horizontal
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
+    trajectory_points = load_trajectory_points(trajectory_csv, width, height)
+
     output_video.parent.mkdir(parents=True, exist_ok=True)
     writer = cv2.VideoWriter(str(output_video), fourcc, fps, (width, height))
 
     frame_index = 0
+
     while True:
         ok, frame = cap.read()
         if not ok:
@@ -92,6 +157,7 @@ def render_preview(video_path, analysis_csv, output_video, hand, flip_horizontal
             row = frame_lookup[frame_index]
             wrist_x = getattr(row, f"{hand}_wrist_x")
             wrist_y = getattr(row, f"{hand}_wrist_y")
+
             if not pd.isna(wrist_x) and not pd.isna(wrist_y):
                 px = int(wrist_x * width)
                 py = int(wrist_y * height)
@@ -108,6 +174,13 @@ def render_preview(video_path, analysis_csv, output_video, hand, flip_horizontal
         if start_frame <= frame_index <= release_frame:
             draw_label(frame, "THROW WINDOW", (24, height - 30), (0, 255, 255))
 
+        draw_animated_trajectory(
+            frame=frame,
+            trajectory_points=trajectory_points,
+            release_frame=release_frame,
+            frame_index=frame_index,
+        )
+
         writer.write(frame)
         frame_index += 1
 
@@ -117,17 +190,20 @@ def render_preview(video_path, analysis_csv, output_video, hand, flip_horizontal
     print(f"Video: {video_path}")
     print(f"Flip horizontal: {flip_horizontal}")
     print(f"Analysis CSV: {analysis_csv}")
+    print(f"Trajectory CSV: {trajectory_csv}")
     print(f"Start frame: {start_frame}")
     print(f"Release candidate frame: {release_frame}")
+    print(f"Trajectory points: {len(trajectory_points)}")
     print(f"Preview saved: {output_video}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Render a video preview with start and release candidate markers."
+        description="Render a video preview with start, release candidate, and animated trajectory."
     )
     parser.add_argument("video", type=Path, help="Input video path")
     parser.add_argument("analysis_csv", type=Path, help="CSV created by analyze_throw.py")
+    parser.add_argument("trajectory_csv", type=Path, help="CSV created by trajectory.py")
     parser.add_argument(
         "--hand",
         choices=["right", "left"],
@@ -145,9 +221,17 @@ def main():
         action="store_true",
         help="Flip mirrored/selfie videos before drawing markers",
     )
+
     args = parser.parse_args()
 
-    render_preview(args.video, args.analysis_csv, args.out, args.hand, args.flip_horizontal)
+    render_preview(
+        video_path=args.video,
+        analysis_csv=args.analysis_csv,
+        trajectory_csv=args.trajectory_csv,
+        output_video=args.out,
+        hand=args.hand,
+        flip_horizontal=args.flip_horizontal,
+    )
 
 
 if __name__ == "__main__":
