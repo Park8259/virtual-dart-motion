@@ -1,5 +1,8 @@
+import argparse
+import sys
 from pathlib import Path
 
+from src.adb_capture import AdbCaptureError, capture_video
 from src.extract_landmarks import extract_pose
 from src.analyze_throw import analyze
 from src.trajectory import predict
@@ -7,10 +10,7 @@ from src.simulate_board import read_hit_position, render_board
 from src.render_analysis_preview import render_preview
 
 
-def main():
-    video_path = Path("videos/3.mp4")
-
-
+def run_analysis(video_path):
     hand = "right"
     flip_horizontal = False
 
@@ -88,5 +88,36 @@ def main():
     print(f"결과 폴더: {output_dir}")
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Run virtual dart motion analysis.")
+    parser.add_argument(
+        "--video",
+        type=Path,
+        default=Path("videos/3.mp4"),
+        help="Input video path. Used unless --adb-capture is set.",
+    )
+    parser.add_argument(
+        "--adb-capture",
+        action="store_true",
+        help="Record a new video over ADB, pull it into videos/, then analyze it.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("adb_config.json"),
+        help="ADB capture config path.",
+    )
+    args = parser.parse_args()
+
+    try:
+        video_path = capture_video(args.config) if args.adb_capture else args.video
+    except AdbCaptureError as exc:
+        print(f"[ADB 오류] {exc}", file=sys.stderr)
+        return 1
+
+    run_analysis(video_path)
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
