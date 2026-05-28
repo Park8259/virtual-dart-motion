@@ -1,0 +1,539 @@
+body {
+
+  margin: 0;
+
+  background:
+    radial-gradient(circle at top,
+      #0d1630 0%,
+      #050816 45%,
+      #02040b 100%);
+
+  color: white;
+
+  font-family: Arial, sans-serif;
+
+  overflow: hidden;
+
+}
+
+/* 전체 */
+
+.container {
+
+  padding: 26px;
+
+  height: 100vh;
+
+  box-sizing: border-box;
+
+}
+
+/* HEADER */
+
+.header {
+
+  margin-bottom: 18px;
+
+}
+
+.header h1 {
+
+  margin: 0;
+
+  font-size: 34px;
+
+  color: #4ea1ff;
+
+  line-height: 1;
+
+  letter-spacing: 1px;
+
+  text-shadow:
+    0 0 12px rgba(78, 161, 255, 0.5);
+
+}
+
+.header p {
+
+  margin-top: 6px;
+
+  color: #9ca3af;
+
+  font-size: 15px;
+
+}
+
+/* GRID */
+
+.dashboard {
+
+  display: grid;
+
+  grid-template-columns:
+    260px
+    1fr
+    260px;
+
+  gap: 18px;
+
+  height: calc(100vh - 120px);
+
+}
+
+/* PANEL */
+
+.panel {
+
+  background:
+    linear-gradient(
+      180deg,
+      #0d1628,
+      #0a101d
+    );
+
+  border: 1px solid #1f2a44;
+
+  border-radius: 18px;
+
+  padding: 16px;
+
+  height: 100%;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 0 18px rgba(0, 140, 255, 0.12);
+
+  display: flex;
+
+  flex-direction: column;
+
+}
+
+/* PANEL TITLE */
+
+.panel h2 {
+
+  margin-top: 0;
+
+  margin-bottom: 16px;
+
+  color: #7ec8ff;
+
+  font-size: 20px;
+
+  letter-spacing: 0.5px;
+
+}
+
+/* INPUT */
+
+input[type="text"] {
+
+  width: 100%;
+
+  padding: 11px;
+
+  margin-bottom: 10px;
+
+  border-radius: 10px;
+
+  border: 1px solid #1f2a44;
+
+  background: #111827;
+
+  color: white;
+
+  box-sizing: border-box;
+
+  font-size: 14px;
+
+  outline: none;
+
+}
+
+input[type="text"]:focus {
+
+  border-color: #4ea1ff;
+
+  box-shadow:
+    0 0 10px rgba(78, 161, 255, 0.35);
+
+}
+
+/* BUTTON */
+
+button {
+
+  width: 100%;
+
+  background:
+    linear-gradient(
+      180deg,
+      #1f7cff,
+      #1263d6
+    );
+
+  border: none;
+
+  color: white;
+
+  padding: 12px 18px;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+
+  font-size: 14px;
+
+  font-weight: bold;
+
+  margin-top: 8px;
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+
+  box-shadow:
+    0 0 14px rgba(0, 132, 255, 0.25);
+
+}
+
+button:hover {
+
+  transform: scale(1.02);
+
+  box-shadow:
+    0 0 20px rgba(0, 132, 255, 0.45);
+
+}
+
+/* RESET BUTTON */
+
+.reset-button {
+
+  background:
+    linear-gradient(
+      180deg,
+      #ef4444,
+      #c92f2f
+    );
+
+}
+
+.reset-button:hover {
+
+  box-shadow:
+    0 0 20px rgba(255, 70, 70, 0.45);
+
+}
+
+/* RESULT BOX */
+
+.result-box {
+
+  margin-top: 14px;
+
+  padding: 14px;
+
+  border-radius: 12px;
+
+  background: rgba(17, 24, 39, 0.9);
+
+  border: 1px solid rgba(255,255,255,0.04);
+
+}
+
+.result-box h3 {
+
+  margin-top: 0;
+
+  margin-bottom: 8px;
+
+  font-size: 15px;
+
+  color: #9ecfff;
+
+}
+
+/* PLAYER BOX */
+
+.player-box {
+
+  margin-top: 14px;
+
+  padding: 14px;
+
+  border-radius: 12px;
+
+  background: rgba(17, 24, 39, 0.9);
+
+  border: 1px solid rgba(255,255,255,0.04);
+
+}
+
+/* SCORE */
+
+.score {
+
+  font-size: 22px;
+
+  font-weight: bold;
+
+  color: #52ff8f;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+
+}
+
+/* TURN */
+
+.turn {
+
+  color: #52ff8f;
+
+  font-weight: bold;
+
+  font-size: 20px;
+
+  text-shadow:
+    0 0 10px rgba(82,255,143,0.4);
+
+}
+
+/* LOADING */
+
+#loading {
+
+  margin-top: 10px;
+
+  color: #52ff8f;
+
+  font-weight: bold;
+
+  font-size: 14px;
+
+}
+
+/* BOARD PANEL */
+
+.board {
+
+  flex: 1;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(5, 72px);
+
+  gap: 14px;
+
+  justify-content: center;
+
+  align-content: center;
+
+}
+
+/* CELL */
+
+.cell {
+
+  width: 72px;
+
+  height: 72px;
+
+  border-radius: 50%;
+
+  background: #09111f;
+
+  border: 3px solid #1d4ed8;
+
+  box-shadow:
+    0 0 10px rgba(0, 132, 255, 0.5);
+
+  transition:
+    all 0.2s ease;
+
+}
+
+/* GREEN */
+
+.cell.green {
+
+  border-color: #22c55e;
+
+  box-shadow:
+    0 0 14px rgba(34, 197, 94, 0.8);
+
+}
+
+/* YELLOW */
+
+.cell.yellow {
+
+  border-color: #facc15;
+
+  box-shadow:
+    0 0 14px rgba(250, 204, 21, 0.8);
+
+}
+
+/* RED */
+
+.cell.red {
+
+  border-color: #ef4444;
+
+  box-shadow:
+    0 0 14px rgba(239, 68, 68, 0.9);
+
+}
+
+/* ACTIVE */
+
+.cell.active {
+
+  background: #00e5ff;
+
+  border-color: #00e5ff;
+
+  box-shadow:
+    0 0 12px #00e5ff,
+    0 0 24px #00e5ff,
+    0 0 42px #00e5ff;
+
+  transform: scale(1.08);
+
+  animation:
+    hitPulse 0.4s ease;
+
+}
+
+/* HIT PULSE */
+
+@keyframes hitPulse {
+
+  0% {
+
+    transform: scale(1);
+
+  }
+
+  50% {
+
+    transform: scale(1.22);
+
+  }
+
+  100% {
+
+    transform: scale(1.08);
+
+  }
+
+}
+
+/* SCORE POPUP */
+
+.score-popup {
+
+  position: fixed;
+
+  color: #00ff99;
+
+  font-size: 36px;
+
+  font-weight: bold;
+
+  pointer-events: none;
+
+  z-index: 999;
+
+  animation:
+    scoreFloat 1s ease-out forwards;
+
+}
+
+@keyframes scoreFloat {
+
+  0% {
+
+    opacity: 0;
+
+    transform:
+      translateY(0px)
+      scale(0.6);
+
+  }
+
+  20% {
+
+    opacity: 1;
+
+    transform:
+      translateY(-20px)
+      scale(1.15);
+
+  }
+
+  100% {
+
+    opacity: 0;
+
+    transform:
+      translateY(-90px)
+      scale(1);
+
+  }
+
+}
+
+/* TURN GLOW */
+
+.turn-active {
+
+  box-shadow:
+    0 0 10px #00ff99,
+    0 0 20px #00ff99;
+
+  transition: 0.3s;
+
+}
+
+/* GAME OVER */
+
+.game-over {
+
+  animation:
+    gameOverFlash 1s infinite;
+
+}
+
+@keyframes gameOverFlash {
+
+  0% {
+
+    color: #ffffff;
+
+  }
+
+  50% {
+
+    color: #00ff99;
+
+  }
+
+  100% {
+
+    color: #ffffff;
+
+  }
+
+}
