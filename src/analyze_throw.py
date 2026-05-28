@@ -6,6 +6,7 @@ import pandas as pd
 
 
 MOTION_POINTS = {"wrist", "thumb_tip", "index_tip", "middle_tip"}
+START_MODES = {"recent", "video-start"}
 
 
 def moving_average(values, window):
@@ -160,10 +161,29 @@ def calculate_hit_position(direction_x, direction_y, speed, board_w, board_h, se
     )
 
 
+def select_start_frame(df, release_idx, lookback, start_mode):
+    release_pos = df.index.get_loc(release_idx)
+
+    if start_mode == "video-start":
+        candidates = df.iloc[: release_pos + 1]
+        candidates = candidates[candidates["tracking_ok"] == True]
+        if not candidates.empty:
+            return candidates.index[0]
+        return df.index[0]
+
+    start_pos = max(0, release_pos - lookback)
+    candidates = df.iloc[start_pos : release_pos + 1]
+    candidates = candidates[candidates["tracking_ok"] == True]
+    if len(candidates) >= 2:
+        return candidates.index[0]
+    return df.index[start_pos]
+
+
 def analyze(
     csv_path,
     hand,
     motion_point,
+    start_mode,
     output_csv,
     window,
     lookback,
@@ -179,6 +199,8 @@ def analyze(
         raise ValueError("--hand must be either right or left")
     if motion_point not in MOTION_POINTS | {"auto"}:
         raise ValueError(f"--motion-point must be one of: auto, {sorted(MOTION_POINTS)}")
+    if start_mode not in START_MODES:
+        raise ValueError(f"--start-mode must be one of: {sorted(START_MODES)}")
 
     required = [
         "frame_index",
@@ -211,14 +233,7 @@ def analyze(
     release_idx, threshold = find_release_candidate(df)
     release_row = df.loc[release_idx]
 
-    release_pos = df.index.get_loc(release_idx)
-    start_pos = max(0, release_pos - lookback)
-    start_candidates = df.iloc[start_pos : release_pos + 1]
-    start_candidates = start_candidates[start_candidates["tracking_ok"] == True]
-    if len(start_candidates) >= 2:
-        start_idx = start_candidates.index[0]
-    else:
-        start_idx = df.index[start_pos]
+    start_idx = select_start_frame(df, release_idx, lookback, start_mode)
     start_row = df.loc[start_idx]
 
     dx = release_row[f"{point}_x"] - start_row[f"{point}_x"]
@@ -278,6 +293,7 @@ def analyze(
     print(f"Input CSV: {csv_path}")
     print(f"Hand: {hand}")
     print(f"Motion point: {motion_point}")
+    print(f"Start mode: {start_mode}")
     print(f"Start frame: {int(start_row['frame_index'])} ({start_row['time_sec']:.4f}s)")
     print(f"Release candidate frame: {int(release_row['frame_index'])} ({release_row['time_sec']:.4f}s)")
     print(f"Release speed threshold: {threshold:.4f}")
@@ -314,6 +330,12 @@ def main():
         choices=["auto", "wrist", "thumb_tip", "index_tip", "middle_tip"],
         default="auto",
         help="Landmark used for release timing and throw direction",
+    )
+    parser.add_argument(
+        "--start-mode",
+        choices=["recent", "video-start"],
+        default="video-start",
+        help="How to choose the throw start frame",
     )
     parser.add_argument(
         "--out",
@@ -359,6 +381,7 @@ def main():
         args.csv,
         args.hand,
         args.motion_point,
+        args.start_mode,
         args.out,
         args.window,
         args.lookback,

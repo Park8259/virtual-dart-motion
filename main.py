@@ -65,6 +65,12 @@ def parse_args():
         help="Landmark used for release timing and trajectory start.",
     )
     parser.add_argument(
+        "--start-mode",
+        choices=["recent", "video-start"],
+        default="video-start",
+        help="How to choose the throw start frame.",
+    )
+    parser.add_argument(
         "--flip-horizontal",
         action="store_true",
         help="Flip mirrored/selfie videos before analysis.",
@@ -75,10 +81,38 @@ def parse_args():
         default=2.0,
         help="Fixed distance from thrower to virtual board in meters.",
     )
+    parser.add_argument(
+        "--physics-mode",
+        choices=["simple", "dart"],
+        default="dart",
+        help="Trajectory model to use.",
+    )
+    parser.add_argument(
+        "--dart-speed-mps",
+        type=float,
+        default=8.0,
+        help="Initial dart speed in meters per second for dart physics mode.",
+    )
+    parser.add_argument(
+        "--direction-window",
+        type=int,
+        default=20,
+        help="Recent frames before release used to estimate throw direction.",
+    )
     return parser.parse_args()
 
 
-def run_analysis(video_path, hand, motion_point, flip_horizontal, board_distance):
+def run_analysis(
+    video_path,
+    hand,
+    motion_point,
+    start_mode,
+    flip_horizontal,
+    board_distance,
+    physics_mode,
+    dart_speed_mps,
+    direction_window,
+):
     run_name = build_run_name(video_path, flip_horizontal)
 
     output_dir = Path("output") / run_name
@@ -97,8 +131,12 @@ def run_analysis(video_path, hand, motion_point, flip_horizontal, board_distance
     print(f"Video: {video_path}")
     print(f"Hand: {hand}")
     print(f"Motion point: {motion_point}")
+    print(f"Start mode: {start_mode}")
     print(f"Flip horizontal: {flip_horizontal}")
     print(f"Board distance: {board_distance}m")
+    print(f"Physics mode: {physics_mode}")
+    print(f"Dart speed: {dart_speed_mps}m/s")
+    print(f"Direction window: {direction_window}")
     print(f"Output folder: {output_dir}")
 
     print("\n1. 관절 및 손가락 좌표 추출 중...")
@@ -114,10 +152,11 @@ def run_analysis(video_path, hand, motion_point, flip_horizontal, board_distance
         csv_path=landmarks_csv,
         hand=hand,
         motion_point=motion_point,
+        start_mode=start_mode,
         output_csv=analysis_csv,
         window=5,
         lookback=10,
-        direction_window=4,
+        direction_window=direction_window,
         min_visibility=0.5,
         board_w=board_w,
         board_h=board_h,
@@ -141,6 +180,13 @@ def run_analysis(video_path, hand, motion_point, flip_horizontal, board_distance
         speed_to_mps=2.5,
         min_duration=0.25,
         max_duration=1.2,
+        physics_mode=physics_mode,
+        dart_speed_mps=dart_speed_mps,
+        board_width_m=0.6,
+        board_height_m=0.6,
+        gravity_mps2=9.81,
+        max_horizontal_angle_deg=15.0,
+        max_vertical_angle_deg=15.0,
     )
 
     print("\n4. 가상 보드 결과 이미지 생성 중...")
@@ -185,8 +231,12 @@ def main():
             video_path=video_path,
             hand=args.hand,
             motion_point=args.motion_point,
+            start_mode=args.start_mode,
             flip_horizontal=args.flip_horizontal,
             board_distance=args.board_distance,
+            physics_mode=args.physics_mode,
+            dart_speed_mps=args.dart_speed_mps,
+            direction_window=args.direction_window,
         )
     except AdbCaptureError as exc:
         print(f"[ADB 오류] {exc}", file=sys.stderr)
