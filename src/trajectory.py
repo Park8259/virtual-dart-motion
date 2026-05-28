@@ -199,6 +199,35 @@ def endpoint_meters_to_board(endpoint, board_w, board_h, board_width_m, board_he
     )
 
 
+def build_object_corrected_trajectory(object_track_csv, release_x, release_y, min_object_points):
+    if not object_track_csv:
+        return None
+
+    track_df = pd.read_csv(object_track_csv)
+    if track_df.empty or len(track_df) < min_object_points:
+        return None
+
+    points = []
+    first_time = track_df.iloc[0]["time_sec"]
+    for i, row in enumerate(track_df.itertuples(index=False)):
+        if pd.isna(row.x) or pd.isna(row.y):
+            continue
+        points.append(
+            {
+                "point_index": i,
+                "t": row.time_sec - first_time,
+                "x": row.x,
+                "y": row.y,
+                "object_area": row.area,
+            }
+        )
+
+    if len(points) < min_object_points:
+        return None
+
+    return points
+
+
 def save_plot(
     points,
     start_row,
@@ -318,6 +347,8 @@ def predict(
     gravity_mps2,
     max_horizontal_angle_deg,
     max_vertical_angle_deg,
+    object_track_csv,
+    min_object_points,
 ):
     df = pd.read_csv(analysis_csv)
     hand = hand.lower()
@@ -331,7 +362,15 @@ def predict(
     release_x, release_y = row_point(release_row, hand, "release")
     release_speed = release_row.get("throw_release_speed", speed)
 
-    if physics_mode == "dart":
+    points = build_object_corrected_trajectory(
+        object_track_csv=object_track_csv,
+        release_x=release_x,
+        release_y=release_y,
+        min_object_points=min_object_points,
+    )
+    using_object_correction = points is not None
+
+    if physics_mode == "dart" and not using_object_correction:
         points, flight_duration, dart_vx_mps, dart_vy_mps, dart_forward_mps = build_dart_trajectory(
             release_x=release_x,
             release_y=release_y,
@@ -347,21 +386,26 @@ def predict(
             steps=steps,
         )
     else:
-        flight_duration = estimate_flight_duration(
-            release_speed=release_speed,
-            board_distance=board_distance,
-            speed_to_mps=speed_to_mps,
-            min_duration=min_duration,
-            max_duration=max_duration,
-            fallback_duration=duration,
-        )
         dart_vx_mps = math.nan
         dart_vy_mps = math.nan
         dart_forward_mps = math.nan
-        points = build_trajectory(release_x, release_y, vx, vy, gravity, flight_duration, steps)
+        if using_object_correction:
+            flight_duration = points[-1]["t"]
+        else:
+            flight_duration = estimate_flight_duration(
+                release_speed=release_speed,
+                board_distance=board_distance,
+                speed_to_mps=speed_to_mps,
+                min_duration=min_duration,
+                max_duration=max_duration,
+                fallback_duration=duration,
+            )
+            points = build_trajectory(release_x, release_y, vx, vy, gravity, flight_duration, steps)
 
     endpoint = points[-1]
-    if physics_mode == "dart":
+    if using_object_correction:
+        hit = endpoint_to_board(endpoint, release_x, release_y, board_w, board_h, board_scale)
+    elif physics_mode == "dart":
         hit = endpoint_meters_to_board(endpoint, board_w, board_h, board_width_m, board_height_m)
     else:
         hit = endpoint_to_board(endpoint, release_x, release_y, board_w, board_h, board_scale)
@@ -375,6 +419,7 @@ def predict(
     trajectory_df["direction_x"] = direction_x
     trajectory_df["direction_y"] = direction_y
     trajectory_df["physics_mode"] = physics_mode
+    trajectory_df["trajectory_source"] = "object_track" if using_object_correction else physics_mode
     trajectory_df["board_distance_m"] = board_distance
     trajectory_df["board_width_m"] = board_width_m
     trajectory_df["board_height_m"] = board_height_m
@@ -413,6 +458,7 @@ def predict(
     print(f"Initial speed: {speed:.4f}")
     print(f"Direction: ({direction_x:.4f}, {direction_y:.4f})")
     print(f"Physics mode: {physics_mode}")
+    print(f"Trajectory source: {'object_track' if using_object_correction else physics_mode}")
     print(f"Gravity: {gravity_mps2 if physics_mode == 'dart' else gravity}")
     print(f"Board distance: {board_distance}m")
     if physics_mode == "dart":
@@ -551,6 +597,17 @@ def main():
         default=15.0,
         help="Maximum vertical launch angle mapped from camera direction",
     )
+    parser.add_argument(
+        "--object-track-csv",
+        type=Path,
+        help="Optional object tracking CSV used to correct trajectory",
+    )
+    parser.add_argument(
+        "--min-object-points",
+        type=int,
+        default=3,
+        help="Minimum detected object points required for correction",
+    )
     args = parser.parse_args()
 
     predict(
@@ -576,6 +633,8 @@ def main():
         args.gravity_mps2,
         args.max_horizontal_angle_deg,
         args.max_vertical_angle_deg,
+        args.object_track_csv,
+        args.min_object_points,
     )
 
 

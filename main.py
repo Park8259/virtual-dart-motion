@@ -5,6 +5,7 @@ from pathlib import Path
 from src.adb_capture import AdbCaptureError, capture_video
 from src.extract_landmarks import extract_pose
 from src.analyze_throw import analyze
+from src.object_tracker import track_object, correct_release_from_object_track, COLOR_RANGES
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
 from src.render_analysis_preview import render_preview
@@ -99,6 +100,59 @@ def parse_args():
         default=20,
         help="Recent frames before release used to estimate throw direction.",
     )
+    parser.add_argument(
+        "--release-offset-frames",
+        type=int,
+        default=0,
+        help="Move the detected release frame this many frames earlier.",
+    )
+    parser.add_argument(
+        "--trajectory-y-offset-px",
+        type=int,
+        default=0,
+        help="Move the rendered trajectory upward by this many pixels in the preview video.",
+    )
+    parser.add_argument(
+        "--track-object",
+        action="store_true",
+        help="Track a colored projectile after release and use it to correct trajectory.",
+    )
+    parser.add_argument(
+        "--object-method",
+        choices=["color", "flow"],
+        default="flow",
+        help="Projectile tracking method when --track-object is enabled.",
+    )
+    parser.add_argument(
+        "--object-color",
+        choices=sorted(COLOR_RANGES),
+        default="green",
+        help="Projectile color to track when --track-object is enabled.",
+    )
+    parser.add_argument(
+        "--object-min-area",
+        type=float,
+        default=20,
+        help="Minimum contour area for projectile tracking.",
+    )
+    parser.add_argument(
+        "--object-max-frames",
+        type=int,
+        default=40,
+        help="Maximum frames to scan after release for projectile tracking.",
+    )
+    parser.add_argument(
+        "--object-min-motion-px",
+        type=float,
+        default=4.0,
+        help="Minimum optical-flow motion in pixels.",
+    )
+    parser.add_argument(
+        "--object-release-lead-frames",
+        type=int,
+        default=3,
+        help="Move release marker this many frames before first tracked object frame.",
+    )
     return parser.parse_args()
 
 
@@ -112,6 +166,15 @@ def run_analysis(
     physics_mode,
     dart_speed_mps,
     direction_window,
+    release_offset_frames,
+    trajectory_y_offset_px,
+    track_object_enabled,
+    object_method,
+    object_color,
+    object_min_area,
+    object_max_frames,
+    object_min_motion_px,
+    object_release_lead_frames,
 ):
     run_name = build_run_name(video_path, flip_horizontal)
 
@@ -120,6 +183,7 @@ def run_analysis(
     pose_preview = output_dir / f"{run_name}_pose_preview.mp4"
     analysis_csv = output_dir / f"{run_name}_analysis.csv"
     trajectory_csv = output_dir / f"{run_name}_trajectory.csv"
+    object_track_csv = output_dir / f"{run_name}_object_track.csv"
     trajectory_png = output_dir / f"{run_name}_trajectory.png"
     board_png = output_dir / f"{run_name}_board.png"
     analysis_preview = output_dir / f"{run_name}_analysis_preview.mp4"
@@ -137,6 +201,10 @@ def run_analysis(
     print(f"Physics mode: {physics_mode}")
     print(f"Dart speed: {dart_speed_mps}m/s")
     print(f"Direction window: {direction_window}")
+    print(f"Release offset frames: {release_offset_frames}")
+    print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
+    print(f"Track object: {track_object_enabled}")
+    print(f"Object method: {object_method}")
     print(f"Output folder: {output_dir}")
 
     print("\n1. 관절 및 손가락 좌표 추출 중...")
@@ -161,7 +229,35 @@ def run_analysis(
         board_w=board_w,
         board_h=board_h,
         sensitivity=0.35,
+        release_offset_frames=release_offset_frames,
     )
+
+    if track_object_enabled:
+        print("\n2-1. 릴리즈 이후 물체 추적 중...")
+        track_object(
+            video_path=video_path,
+            analysis_csv=analysis_csv,
+            output_csv=object_track_csv,
+            method=object_method,
+            color=object_color,
+            min_area=object_min_area,
+            max_frames_after_release=object_max_frames,
+            flip_horizontal=flip_horizontal,
+            min_motion_px=object_min_motion_px,
+        )
+        correction = correct_release_from_object_track(
+            analysis_csv=analysis_csv,
+            object_track_csv=object_track_csv,
+            lead_frames=object_release_lead_frames,
+        )
+        if correction:
+            print(
+                "Release corrected from object track: "
+                f"{correction['corrected_release_frame']} "
+                f"(first object frame: {correction['first_object_frame']})"
+            )
+    else:
+        object_track_csv = None
 
     print("\n3. 가상 다트 궤적 예측 중...")
     predict(
@@ -187,6 +283,8 @@ def run_analysis(
         gravity_mps2=9.81,
         max_horizontal_angle_deg=15.0,
         max_vertical_angle_deg=15.0,
+        object_track_csv=object_track_csv,
+        min_object_points=3,
     )
 
     print("\n4. 가상 보드 결과 이미지 생성 중...")
@@ -207,6 +305,7 @@ def run_analysis(
         output_video=analysis_preview,
         hand=hand,
         flip_horizontal=flip_horizontal,
+        trajectory_y_offset_px=trajectory_y_offset_px,
     )
 
     print("\n전체 실행 완료")
@@ -237,6 +336,15 @@ def main():
             physics_mode=args.physics_mode,
             dart_speed_mps=args.dart_speed_mps,
             direction_window=args.direction_window,
+            release_offset_frames=args.release_offset_frames,
+            trajectory_y_offset_px=args.trajectory_y_offset_px,
+            track_object_enabled=args.track_object,
+            object_method=args.object_method,
+            object_color=args.object_color,
+            object_min_area=args.object_min_area,
+            object_max_frames=args.object_max_frames,
+            object_min_motion_px=args.object_min_motion_px,
+            object_release_lead_frames=args.object_release_lead_frames,
         )
     except AdbCaptureError as exc:
         print(f"[ADB 오류] {exc}", file=sys.stderr)

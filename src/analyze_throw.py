@@ -119,6 +119,21 @@ def find_release_candidate(df, speed_threshold_ratio=0.45):
     return release_idx, threshold
 
 
+def apply_release_offset(df, release_idx, release_offset_frames):
+    if release_offset_frames <= 0:
+        return release_idx
+
+    release_pos = df.index.get_loc(release_idx)
+    target_pos = max(0, release_pos - release_offset_frames)
+    candidates = df.iloc[: target_pos + 1]
+    candidates = candidates[candidates["tracking_ok"] == True]
+
+    if candidates.empty:
+        return df.index[target_pos]
+
+    return candidates.index[-1]
+
+
 def direction_from_recent_motion(df, release_idx, hand, motion_point, direction_window):
     release_pos = df.index.get_loc(release_idx)
     start_pos = max(0, release_pos - direction_window)
@@ -192,6 +207,7 @@ def analyze(
     board_w,
     board_h,
     sensitivity,
+    release_offset_frames=0,
 ):
     df = pd.read_csv(csv_path)
     hand = hand.lower()
@@ -230,7 +246,8 @@ def analyze(
     df["smooth_speed"] = moving_average(df["filtered_speed"].fillna(0), window)
     df["elbow_angle"] = df.apply(lambda row: calculate_elbow_angle(row, hand), axis=1)
 
-    release_idx, threshold = find_release_candidate(df)
+    detected_release_idx, threshold = find_release_candidate(df)
+    release_idx = apply_release_offset(df, detected_release_idx, release_offset_frames)
     release_row = df.loc[release_idx]
 
     start_idx = select_start_frame(df, release_idx, lookback, start_mode)
@@ -284,6 +301,8 @@ def analyze(
     df["throw_release_y"] = release_row[f"{point}_y"]
     df["throw_start_x"] = start_row[f"{point}_x"]
     df["throw_start_y"] = start_row[f"{point}_y"]
+    df["throw_detected_release_frame"] = int(df.loc[detected_release_idx, "frame_index"])
+    df["throw_release_offset_frames"] = release_offset_frames
 
     if output_csv:
         output_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -295,6 +314,13 @@ def analyze(
     print(f"Motion point: {motion_point}")
     print(f"Start mode: {start_mode}")
     print(f"Start frame: {int(start_row['frame_index'])} ({start_row['time_sec']:.4f}s)")
+    if release_offset_frames > 0:
+        detected_row = df.loc[detected_release_idx]
+        print(
+            "Detected release frame before offset: "
+            f"{int(detected_row['frame_index'])} ({detected_row['time_sec']:.4f}s)"
+        )
+        print(f"Release offset frames: {release_offset_frames}")
     print(f"Release candidate frame: {int(release_row['frame_index'])} ({release_row['time_sec']:.4f}s)")
     print(f"Release speed threshold: {threshold:.4f}")
     print(f"Release raw speed: {release_row['speed']:.4f}")
@@ -362,6 +388,12 @@ def main():
         help="Recent frames before release used to estimate final direction",
     )
     parser.add_argument(
+        "--release-offset-frames",
+        type=int,
+        default=0,
+        help="Move the release candidate this many frames earlier.",
+    )
+    parser.add_argument(
         "--min-visibility",
         type=float,
         default=0.5,
@@ -390,6 +422,7 @@ def main():
         args.board_w,
         args.board_h,
         args.sensitivity,
+        args.release_offset_frames,
     )
 
 

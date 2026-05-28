@@ -24,7 +24,7 @@ def read_markers(analysis_csv):
     return df, start_rows.iloc[0], release_rows.iloc[0]
 
 
-def load_trajectory_points(trajectory_csv, width, height):
+def load_trajectory_points(trajectory_csv, width, height, y_offset_px=0):
     traj_df = pd.read_csv(trajectory_csv)
 
     points = []
@@ -37,7 +37,7 @@ def load_trajectory_points(trajectory_csv, width, height):
             continue
 
         px = int(x * width)
-        py = int(y * height)
+        py = int(y * height) - y_offset_px
 
         points.append((px, py))
 
@@ -155,6 +155,7 @@ def render_preview(
     output_video,
     hand,
     flip_horizontal=False,
+    trajectory_y_offset_px=0,
 ):
     df, start_row, release_row = read_markers(analysis_csv)
     frame_lookup = {int(row.frame_index): row for row in df.itertuples(index=False)}
@@ -171,7 +172,12 @@ def render_preview(
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
-    trajectory_points = load_trajectory_points(trajectory_csv, width, height)
+    trajectory_points = load_trajectory_points(
+        trajectory_csv,
+        width,
+        height,
+        y_offset_px=trajectory_y_offset_px,
+    )
 
     output_video.parent.mkdir(parents=True, exist_ok=True)
     writer = cv2.VideoWriter(
@@ -233,6 +239,7 @@ def render_preview(
     print(f"Start frame: {start_frame}")
     print(f"Release candidate frame: {release_frame}")
     print(f"Trajectory points: {len(trajectory_points)}")
+    print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
     print(f"Preview saved: {output_video}")
 
 
@@ -260,6 +267,12 @@ def main():
         action="store_true",
         help="Flip mirrored/selfie videos before drawing markers",
     )
+    parser.add_argument(
+        "--trajectory-y-offset-px",
+        type=int,
+        default=0,
+        help="Move the rendered trajectory upward by this many pixels.",
+    )
 
     args = parser.parse_args()
 
@@ -270,6 +283,7 @@ def main():
         output_video=args.out,
         hand=args.hand,
         flip_horizontal=args.flip_horizontal,
+        trajectory_y_offset_px=args.trajectory_y_offset_px,
     )
 
 
