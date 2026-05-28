@@ -10,7 +10,7 @@ from src.analyze_throw import analyze
 from src.object_tracker import track_object, correct_release_from_object_track, COLOR_RANGES
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
-from src.render_analysis_preview import render_preview
+from src.render_analysis_preview import render_grid_trajectory, render_preview
 
 
 def find_latest_video(videos_dir):
@@ -211,6 +211,7 @@ def run_analysis(
     trajectory_png = output_dir / f"{run_name}_trajectory.png"
     board_png = output_dir / f"{run_name}_board.png"
     analysis_preview = output_dir / f"{run_name}_analysis_preview.mp4"
+    grid_trajectory_png = output_dir / f"{run_name}_grid_trajectory.png"
 
     board_w = 16
     board_h = 16
@@ -335,6 +336,16 @@ def run_analysis(
         trajectory_y_offset_px=trajectory_y_offset_px,
     )
 
+    print("\n6. 1920x1080 격자 궤적 이미지 생성 중...")
+    render_grid_trajectory(
+        trajectory_csv=trajectory_csv,
+        output_image=grid_trajectory_png,
+        width=1920,
+        height=1080,
+        grid_size_px=30,
+        trajectory_y_offset_px=trajectory_y_offset_px,
+    )
+
     print("\n전체 실행 완료")
     print(f"명중 위치: ({hit_x}, {hit_y})")
     print(f"결과 폴더: {output_dir}")
@@ -342,6 +353,7 @@ def run_analysis(
     print(f"분석 CSV: {analysis_csv}")
     print(f"궤적 이미지: {trajectory_png}")
     print(f"분석 영상: {analysis_preview}")
+    print(f"격자 궤적 이미지: {grid_trajectory_png}")
 
 
 def main():

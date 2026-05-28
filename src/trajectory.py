@@ -165,10 +165,13 @@ def build_dart_trajectory(
             {
                 "point_index": i,
                 "t": t,
+                "progress": progress,
                 "x": x,
                 "y": y,
                 "x_m": x_m,
                 "y_m": y_m,
+                "z_m": board_distance * progress,
+                "is_2m_endpoint": i == steps - 1,
             }
         )
 
@@ -243,6 +246,7 @@ def save_plot(
     board_w,
     board_h,
     board_distance,
+    board_height_m,
     physics_mode,
 ):
     import matplotlib.pyplot as plt
@@ -252,13 +256,13 @@ def save_plot(
     release_x, release_y = row_point(release_row, hand, "release")
     motion_point = release_row.get("throw_motion_point", "wrist")
 
-    if physics_mode == "dart" and {"x_m", "y_m"}.issubset(points[-1]):
-        xs = [point["x_m"] for point in points]
+    if physics_mode == "dart" and {"z_m", "y_m"}.issubset(points[-1]):
+        xs = [point["z_m"] for point in points]
         ys = [point["y_m"] for point in points]
-        start_plot_x = (start_x - release_x)
-        start_plot_y = -(start_y - release_y)
-        x_label = "Horizontal movement from release (m)"
-        y_label = "Vertical movement from release (m)"
+        start_plot_x = 0
+        start_plot_y = -(start_y - release_y) * board_height_m
+        x_label = "Forward distance from release (m)"
+        y_label = "Vertical displacement from release (m)"
     else:
         xs = [point["x"] - release_x for point in points]
         ys = [-(point["y"] - release_y) for point in points]
@@ -307,8 +311,12 @@ def save_plot(
         xytext=(8, 8),
     )
     margin = 0.08
-    min_x = min(min(xs), start_plot_x, 0) - margin
-    max_x = max(max(xs), start_plot_x, 0) + margin
+    if physics_mode == "dart" and {"z_m", "y_m"}.issubset(points[-1]):
+        min_x = 0
+        max_x = board_distance if board_distance else max(xs)
+    else:
+        min_x = min(min(xs), start_plot_x, 0) - margin
+        max_x = max(max(xs), start_plot_x, 0) + margin
     min_y = min(min(ys), start_plot_y, 0) - margin
     max_y = max(max(ys), start_plot_y, 0) + margin
     plt.xlim(min_x, max_x)
@@ -455,6 +463,7 @@ def predict(
             board_w,
             board_h,
             board_distance,
+            board_height_m,
             physics_mode,
         )
 

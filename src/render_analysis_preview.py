@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 import cv2
+import numpy as np
 import pandas as pd
 
 
@@ -146,6 +147,70 @@ def draw_animated_trajectory(frame, trajectory_points, release_frame, frame_inde
 
     if points_to_draw == len(trajectory_points):
         draw_label(frame, "ENDPOINT", (current_point[0] + 12, current_point[1] - 12), (255, 0, 0))
+
+
+def draw_grid(frame, cell_size_px):
+    height, width = frame.shape[:2]
+
+    for x in range(0, width + 1, cell_size_px):
+        color = (210, 210, 210) if x % (cell_size_px * 5) else (170, 170, 170)
+        cv2.line(frame, (x, 0), (x, height), color, 1, cv2.LINE_AA)
+
+    for y in range(0, height + 1, cell_size_px):
+        color = (210, 210, 210) if y % (cell_size_px * 5) else (170, 170, 170)
+        cv2.line(frame, (0, y), (width, y), color, 1, cv2.LINE_AA)
+
+
+def draw_full_trajectory(frame, trajectory_points):
+    if not trajectory_points:
+        return
+
+    for i in range(1, len(trajectory_points)):
+        cv2.line(
+            frame,
+            trajectory_points[i - 1],
+            trajectory_points[i],
+            (0, 220, 255),
+            4,
+            cv2.LINE_AA,
+        )
+
+    release_point = trajectory_points[0]
+    endpoint = trajectory_points[-1]
+    cv2.circle(frame, release_point, 8, (0, 0, 255), -1)
+    cv2.circle(frame, release_point, 11, (255, 255, 255), 2)
+    draw_label(frame, "RELEASE", (release_point[0] + 12, release_point[1] - 12), (0, 0, 255))
+    cv2.circle(frame, endpoint, 8, (255, 0, 0), -1)
+    cv2.circle(frame, endpoint, 11, (255, 255, 255), 2)
+    draw_label(frame, "ENDPOINT", (endpoint[0] + 12, endpoint[1] - 12), (255, 0, 0))
+
+
+def render_grid_trajectory(
+    trajectory_csv,
+    output_image,
+    width=1920,
+    height=1080,
+    grid_size_px=30,
+    trajectory_y_offset_px=0,
+):
+    frame = np.full((height, width, 3), 255, dtype=np.uint8)
+    draw_grid(frame, grid_size_px)
+
+    trajectory_points = load_trajectory_points(
+        trajectory_csv,
+        width,
+        height,
+        y_offset_px=trajectory_y_offset_px,
+    )
+    draw_full_trajectory(frame, trajectory_points)
+
+    output_image.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(output_image), frame)
+
+    print(f"Grid trajectory image: {output_image}")
+    print(f"Canvas: {width}x{height}")
+    print(f"Grid size: {grid_size_px}px")
+    print(f"Trajectory points: {len(trajectory_points)}")
 
 
 def render_preview(
