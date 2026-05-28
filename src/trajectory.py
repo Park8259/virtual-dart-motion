@@ -127,6 +127,7 @@ def build_dart_trajectory(
     max_horizontal_angle_deg,
     max_vertical_angle_deg,
     steps,
+    screen_endpoint_x=None,
 ):
     if steps < 2:
         raise ValueError("--steps must be at least 2")
@@ -148,13 +149,17 @@ def build_dart_trajectory(
 
     points = []
     for i in range(steps):
+        progress = i / (steps - 1)
         t = flight_duration * i / (steps - 1)
         x_m = vx_mps * t
         y_m = vy_mps * t - 0.5 * gravity_mps2 * (t**2)
 
         # Approximate a screen-space path for the video overlay while preserving
         # meter-based columns for physics and board hit calculation.
-        x = release_x + (x_m / board_width_m)
+        if screen_endpoint_x is None:
+            x = release_x + (x_m / board_width_m)
+        else:
+            x = release_x + (screen_endpoint_x - release_x) * progress
         y = release_y - (y_m / board_height_m)
         points.append(
             {
@@ -349,6 +354,7 @@ def predict(
     max_vertical_angle_deg,
     object_track_csv,
     min_object_points,
+    screen_endpoint_x,
 ):
     df = pd.read_csv(analysis_csv)
     hand = hand.lower()
@@ -384,6 +390,7 @@ def predict(
             max_horizontal_angle_deg=max_horizontal_angle_deg,
             max_vertical_angle_deg=max_vertical_angle_deg,
             steps=steps,
+            screen_endpoint_x=screen_endpoint_x,
         )
     else:
         dart_vx_mps = math.nan
@@ -430,6 +437,7 @@ def predict(
     trajectory_df["dart_forward_mps"] = dart_forward_mps
     trajectory_df["gravity_mps2"] = gravity_mps2
     trajectory_df["flight_duration"] = flight_duration
+    trajectory_df["screen_endpoint_x"] = screen_endpoint_x
     trajectory_df["board_hit_x"] = hit[0]
     trajectory_df["board_hit_y"] = hit[1]
 
@@ -466,6 +474,8 @@ def predict(
         print(f"Dart velocity: ({dart_vx_mps:.4f}, {dart_vy_mps:.4f}, {dart_forward_mps:.4f}) m/s")
     print(f"Flight duration: {flight_duration:.4f}s")
     print(f"Endpoint: ({endpoint['x']:.4f}, {endpoint['y']:.4f})")
+    if screen_endpoint_x is not None:
+        print(f"Screen endpoint x: {screen_endpoint_x:.4f}")
     print(f"Board hit position: {hit} on {board_w}x{board_h}")
     print(f"Trajectory CSV saved: {output_csv}")
     if plot_path:
@@ -608,6 +618,11 @@ def main():
         default=3,
         help="Minimum detected object points required for correction",
     )
+    parser.add_argument(
+        "--screen-endpoint-x",
+        type=float,
+        help="Optional normalized x position for the rendered 2m endpoint.",
+    )
     args = parser.parse_args()
 
     predict(
@@ -635,6 +650,7 @@ def main():
         args.max_vertical_angle_deg,
         args.object_track_csv,
         args.min_object_points,
+        args.screen_endpoint_x,
     )
 
 

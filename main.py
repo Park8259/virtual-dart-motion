@@ -2,6 +2,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import cv2
+
 from src.adb_capture import AdbCaptureError, capture_video
 from src.extract_landmarks import extract_pose
 from src.analyze_throw import analyze
@@ -27,6 +29,21 @@ def build_run_name(video_path, flip_horizontal):
     if flip_horizontal:
         run_name = f"{run_name}_flipped"
     return run_name
+
+
+def normalized_screen_endpoint_x(video_path, endpoint_margin_px):
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise FileNotFoundError(f"Cannot open video: {video_path}")
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    cap.release()
+
+    if width <= 0:
+        return None
+
+    margin = max(0, min(endpoint_margin_px, width - 1))
+    return (width - margin) / width
 
 
 def parse_args():
@@ -113,6 +130,12 @@ def parse_args():
         help="Move the rendered trajectory upward by this many pixels in the preview video.",
     )
     parser.add_argument(
+        "--endpoint-margin-px",
+        type=int,
+        default=10,
+        help="Fix the rendered 2m endpoint this many pixels before the right edge.",
+    )
+    parser.add_argument(
         "--track-object",
         action="store_true",
         help="Track a colored projectile after release and use it to correct trajectory.",
@@ -168,6 +191,7 @@ def run_analysis(
     direction_window,
     release_offset_frames,
     trajectory_y_offset_px,
+    endpoint_margin_px,
     track_object_enabled,
     object_method,
     object_color,
@@ -203,6 +227,7 @@ def run_analysis(
     print(f"Direction window: {direction_window}")
     print(f"Release offset frames: {release_offset_frames}")
     print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
+    print(f"Endpoint margin: {endpoint_margin_px}px")
     print(f"Track object: {track_object_enabled}")
     print(f"Object method: {object_method}")
     print(f"Output folder: {output_dir}")
@@ -260,6 +285,7 @@ def run_analysis(
         object_track_csv = None
 
     print("\n3. 가상 다트 궤적 예측 중...")
+    screen_endpoint_x = normalized_screen_endpoint_x(video_path, endpoint_margin_px)
     predict(
         analysis_csv=analysis_csv,
         hand=hand,
@@ -285,6 +311,7 @@ def run_analysis(
         max_vertical_angle_deg=15.0,
         object_track_csv=object_track_csv,
         min_object_points=3,
+        screen_endpoint_x=screen_endpoint_x,
     )
 
     print("\n4. 가상 보드 결과 이미지 생성 중...")
@@ -338,6 +365,7 @@ def main():
             direction_window=args.direction_window,
             release_offset_frames=args.release_offset_frames,
             trajectory_y_offset_px=args.trajectory_y_offset_px,
+            endpoint_margin_px=args.endpoint_margin_px,
             track_object_enabled=args.track_object,
             object_method=args.object_method,
             object_color=args.object_color,
