@@ -7,6 +7,7 @@ import cv2
 from src.adb_capture import AdbCaptureError, capture_video
 from src.extract_landmarks import extract_pose
 from src.analyze_throw import analyze
+from src.front_camera import apply_front_camera_direction
 from src.object_tracker import track_object, correct_release_from_object_track, COLOR_RANGES
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
@@ -92,6 +93,28 @@ def parse_args():
         "--flip-horizontal",
         action="store_true",
         help="Flip mirrored/selfie videos before analysis.",
+    )
+    parser.add_argument(
+        "--front-video",
+        type=Path,
+        help="Optional front camera video used to correct left-right direction.",
+    )
+    parser.add_argument(
+        "--front-flip-horizontal",
+        action="store_true",
+        help="Flip the front camera video before extracting landmarks.",
+    )
+    parser.add_argument(
+        "--front-direction-window",
+        type=int,
+        default=20,
+        help="Frames before the side release frame used for front left-right direction.",
+    )
+    parser.add_argument(
+        "--front-horizontal-gain",
+        type=float,
+        default=1.0,
+        help="Scale applied to front camera left-right direction.",
     )
     parser.add_argument(
         "--board-distance",
@@ -185,6 +208,10 @@ def run_analysis(
     motion_point,
     start_mode,
     flip_horizontal,
+    front_video,
+    front_flip_horizontal,
+    front_direction_window,
+    front_horizontal_gain,
     board_distance,
     physics_mode,
     dart_speed_mps,
@@ -204,6 +231,8 @@ def run_analysis(
 
     output_dir = Path("output") / run_name
     landmarks_csv = output_dir / f"{run_name}_landmarks.csv"
+    front_landmarks_csv = output_dir / f"{run_name}_front_landmarks.csv"
+    front_pose_preview = output_dir / f"{run_name}_front_pose_preview.mp4"
     pose_preview = output_dir / f"{run_name}_pose_preview.mp4"
     analysis_csv = output_dir / f"{run_name}_analysis.csv"
     trajectory_csv = output_dir / f"{run_name}_trajectory.csv"
@@ -222,6 +251,8 @@ def run_analysis(
     print(f"Motion point: {motion_point}")
     print(f"Start mode: {start_mode}")
     print(f"Flip horizontal: {flip_horizontal}")
+    print(f"Front video: {front_video}")
+    print(f"Front flip horizontal: {front_flip_horizontal}")
     print(f"Board distance: {board_distance}m")
     print(f"Physics mode: {physics_mode}")
     print(f"Dart speed: {dart_speed_mps}m/s")
@@ -229,6 +260,8 @@ def run_analysis(
     print(f"Release offset frames: {release_offset_frames}")
     print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
     print(f"Endpoint margin: {endpoint_margin_px}px")
+    print(f"Front direction window: {front_direction_window}")
+    print(f"Front horizontal gain: {front_horizontal_gain}")
     print(f"Track object: {track_object_enabled}")
     print(f"Object method: {object_method}")
     print(f"Output folder: {output_dir}")
@@ -258,8 +291,26 @@ def run_analysis(
         release_offset_frames=release_offset_frames,
     )
 
+    if front_video:
+        print("\n2-1. 정면 카메라 좌우 방향 보정 중...")
+        extract_pose(
+            video_path=front_video,
+            output_csv=front_landmarks_csv,
+            preview_path=front_pose_preview,
+            flip_horizontal=front_flip_horizontal,
+        )
+        apply_front_camera_direction(
+            side_analysis_csv=analysis_csv,
+            front_landmarks_csv=front_landmarks_csv,
+            hand=hand,
+            motion_point=motion_point,
+            output_csv=analysis_csv,
+            direction_window=front_direction_window,
+            horizontal_gain=front_horizontal_gain,
+        )
+
     if track_object_enabled:
-        print("\n2-1. 릴리즈 이후 물체 추적 중...")
+        print("\n2-2. 릴리즈 이후 물체 추적 중...")
         track_object(
             video_path=video_path,
             analysis_csv=analysis_csv,
@@ -371,6 +422,10 @@ def main():
             motion_point=args.motion_point,
             start_mode=args.start_mode,
             flip_horizontal=args.flip_horizontal,
+            front_video=args.front_video,
+            front_flip_horizontal=args.front_flip_horizontal,
+            front_direction_window=args.front_direction_window,
+            front_horizontal_gain=args.front_horizontal_gain,
             board_distance=args.board_distance,
             physics_mode=args.physics_mode,
             dart_speed_mps=args.dart_speed_mps,
