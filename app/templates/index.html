@@ -386,8 +386,7 @@ function resetGame() {
   document.getElementById("winnerText")
     .classList.remove("game-over");
 
-  document.getElementById("currentPlayerText").innerText =
-    document.getElementById("p1Label").innerText;
+updateCurrentPlayerName();
 
   document.getElementById("roundText").innerText =
     "ROUND 1 / 3";
@@ -409,6 +408,51 @@ function resetGame() {
 }
 
 createBoard();
+
+function updateCurrentPlayerName() {
+
+  const p1 =
+    document.getElementById("player1Name")
+    .value
+    .trim();
+
+  const p2 =
+    document.getElementById("player2Name")
+    .value
+    .trim();
+
+  if (currentPlayer === 1) {
+
+    document.getElementById(
+      "currentPlayerText"
+    ).innerText =
+      p1 || "PLAYER 1";
+
+  }
+  else {
+
+    document.getElementById(
+      "currentPlayerText"
+    ).innerText =
+      p2 || "PLAYER 2";
+
+  }
+
+}
+
+document
+  .getElementById("player1Name")
+  .addEventListener(
+    "input",
+    updateCurrentPlayerName
+  );
+
+document
+  .getElementById("player2Name")
+  .addEventListener(
+    "input",
+    updateCurrentPlayerName
+  );
 
 const form =
   document.getElementById("uploadForm");
@@ -555,18 +599,7 @@ form.addEventListener("submit", async (e) => {
 
     currentPlayerText.classList.add("turn-active");
 
-    if (currentPlayer === 1) {
-
-      currentPlayerText.innerText =
-        document.getElementById("p1Label").innerText;
-
-    }
-    else {
-
-      currentPlayerText.innerText =
-        document.getElementById("p2Label").innerText;
-
-    }
+updateCurrentPlayerName();
 
     if (currentRound > MAX_ROUND) {
 
