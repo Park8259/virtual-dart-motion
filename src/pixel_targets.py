@@ -1,0 +1,285 @@
+import argparse
+import json
+import math
+import os
+from pathlib import Path
+
+import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault("MPLCONFIGDIR", str(PROJECT_ROOT / ".mplconfig"))
+
+import matplotlib.pyplot as plt
+
+
+DEFAULT_HIT_RADIUS_PX = 140
+DEFAULT_FRONT_DIRECTION_THRESHOLD = 0.35
+
+
+def default_targets(width, height):
+    return {
+        "top": [int(width * 0.5), int(height * 0.28)],
+        "left": [int(width * 0.32), int(height * 0.5)],
+        "center": [int(width * 0.5), int(height * 0.5)],
+        "right": [int(width * 0.68), int(height * 0.5)],
+        "bottom": [int(width * 0.5), int(height * 0.72)],
+    }
+
+
+def load_target_config(config_path, width, height):
+    if not config_path:
+        return {
+            "targets": default_targets(width, height),
+            "hit_radius_px": DEFAULT_HIT_RADIUS_PX,
+            "front_direction_threshold": DEFAULT_FRONT_DIRECTION_THRESHOLD,
+        }
+
+    with Path(config_path).open("r", encoding="utf-8") as file:
+        config = json.load(file)
+
+    targets = config.get("targets") or default_targets(width, height)
+    hit_radius_px = config.get("hit_radius_px", DEFAULT_HIT_RADIUS_PX)
+    front_direction_threshold = config.get(
+        "front_direction_threshold",
+        DEFAULT_FRONT_DIRECTION_THRESHOLD,
+    )
+    return {
+        "targets": targets,
+        "hit_radius_px": hit_radius_px,
+        "front_direction_threshold": front_direction_threshold,
+    }
+
+
+def endpoint_pixel_from_trajectory(trajectory_csv, width, height):
+    df = pd.read_csv(trajectory_csv)
+    if df.empty:
+        raise ValueError("Trajectory CSV is empty.")
+
+    endpoint = df.iloc[-1]
+    return float(endpoint["x"]) * width, float(endpoint["y"]) * height
+
+
+def front_direction_from_analysis(analysis_csv):
+    if not analysis_csv:
+        return None
+
+    df = pd.read_csv(analysis_csv)
+    release_rows = df[df["is_release_candidate"] == True]
+    if release_rows.empty:
+        return None
+
+    row = release_rows.iloc[0]
+    if "front_camera_enabled" not in row.index or not bool(row["front_camera_enabled"]):
+        return None
+    if "front_direction_x" not in row.index or pd.isna(row["front_direction_x"]):
+        return None
+
+    return float(row["front_direction_x"])
+
+
+def nearest_target(endpoint_px, targets, hit_radius_px):
+    endpoint_x, endpoint_y = endpoint_px
+    best_name = None
+    best_distance = math.inf
+
+    for name, (target_x, target_y) in targets.items():
+        distance = math.hypot(endpoint_x - target_x, endpoint_y - target_y)
+        if distance < best_distance:
+            best_name = name
+            best_distance = distance
+
+    return {
+        "target": best_name,
+        "distance_px": best_distance,
+        "hit": best_distance <= hit_radius_px,
+    }
+
+
+def nearest_vertical_target(endpoint_y, targets, hit_radius_px):
+    candidates = {
+        name: target
+        for name, target in targets.items()
+        if name in {"top", "center", "bottom"}
+    }
+    best_name = None
+    best_distance = math.inf
+
+    for name, (_, target_y) in candidates.items():
+        distance = abs(endpoint_y - target_y)
+        if distance < best_distance:
+            best_name = name
+            best_distance = distance
+
+    return {
+        "target": best_name,
+        "distance_px": best_distance,
+        "hit": best_distance <= hit_radius_px,
+    }
+
+
+def classify_cross_target(endpoint_y, targets, hit_radius_px, front_direction_x, front_threshold):
+    if front_direction_x is not None:
+        if front_direction_x <= -front_threshold:
+            return {
+                "target": "left",
+                "distance_px": 0.0,
+                "hit": True,
+                "mode": "front_left_right",
+                "front_direction_x": front_direction_x,
+            }
+        if front_direction_x >= front_threshold:
+            return {
+                "target": "right",
+                "distance_px": 0.0,
+                "hit": True,
+                "mode": "front_left_right",
+                "front_direction_x": front_direction_x,
+            }
+
+    vertical_result = nearest_vertical_target(endpoint_y, targets, hit_radius_px)
+    vertical_result["mode"] = "side_vertical"
+    vertical_result["front_direction_x"] = front_direction_x
+    return vertical_result
+
+
+def display_endpoint_for_target(endpoint_y, targets, hit_result):
+    target = hit_result["target"]
+    if target in {"left", "right"}:
+        return targets[target][0], targets[target][1]
+    if target in {"top", "center", "bottom"}:
+        return targets[target][0], endpoint_y
+    return targets["center"][0], endpoint_y
+
+
+def render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output_png, width, height):
+    fig, ax = plt.subplots(figsize=(12, 7))
+    ax.set_xlim(0, width)
+    ax.set_ylim(height, 0)
+    ax.set_aspect("equal")
+
+    for name, (target_x, target_y) in targets.items():
+        color = "#ffcc33" if name == hit_result["target"] else "#dddddd"
+        edge = "#111111" if name == hit_result["target"] else "#777777"
+        circle = plt.Circle(
+            (target_x, target_y),
+            hit_radius_px,
+            facecolor=color,
+            edgecolor=edge,
+            linewidth=2,
+            alpha=0.5,
+        )
+        ax.add_patch(circle)
+        ax.scatter([target_x], [target_y], color=edge, s=50)
+        ax.text(target_x, target_y - hit_radius_px - 18, name, ha="center", fontsize=12)
+
+    endpoint_x, endpoint_y = endpoint_px
+    ax.scatter([endpoint_x], [endpoint_y], color="#ff3333", s=120, zorder=5)
+    ax.text(endpoint_x + 16, endpoint_y - 16, "endpoint", color="#ff3333", fontsize=12)
+    if hit_result.get("mode") == "front_left_right":
+        ax.text(
+            width * 0.02,
+            height * 0.08,
+            f"front_direction_x={hit_result['front_direction_x']:.3f}",
+            fontsize=12,
+            color="#333333",
+        )
+    ax.set_title(
+        f"Pixel Target Result: {hit_result['target']} / "
+        f"hit={hit_result['hit']} / mode={hit_result.get('mode', 'nearest')} / "
+        f"distance={hit_result['distance_px']:.1f}px"
+    )
+    ax.set_xlabel("Pixel X")
+    ax.set_ylabel("Pixel Y")
+    ax.grid(True, alpha=0.2)
+
+    output_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(output_png, dpi=160)
+    plt.close()
+
+
+def save_result_csv(endpoint_px, hit_result, output_csv):
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(
+        [
+            {
+                "endpoint_x_px": endpoint_px[0],
+                "endpoint_y_px": endpoint_px[1],
+                "target": hit_result["target"],
+                "distance_px": hit_result["distance_px"],
+                "hit": hit_result["hit"],
+                "mode": hit_result.get("mode"),
+                "front_direction_x": hit_result.get("front_direction_x"),
+            }
+        ]
+    ).to_csv(output_csv, index=False)
+
+
+def evaluate_pixel_targets(
+    trajectory_csv,
+    output_png,
+    output_csv,
+    width=1920,
+    height=1080,
+    config_path=None,
+    analysis_csv=None,
+):
+    config = load_target_config(config_path, width, height)
+    targets = config["targets"]
+    hit_radius_px = config["hit_radius_px"]
+    front_direction_threshold = config["front_direction_threshold"]
+
+    endpoint_x, endpoint_y = endpoint_pixel_from_trajectory(trajectory_csv, width, height)
+    front_direction_x = front_direction_from_analysis(analysis_csv)
+
+    hit_result = classify_cross_target(
+        endpoint_y=endpoint_y,
+        targets=targets,
+        hit_radius_px=hit_radius_px,
+        front_direction_x=front_direction_x,
+        front_threshold=front_direction_threshold,
+    )
+    endpoint_px = display_endpoint_for_target(endpoint_y, targets, hit_result)
+
+    render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output_png, width, height)
+    save_result_csv(endpoint_px, hit_result, output_csv)
+
+    print("Pixel target result")
+    print(f"Endpoint px: ({endpoint_x:.1f}, {endpoint_y:.1f})")
+    if front_direction_x is not None:
+        print(f"Front direction x: {front_direction_x:.4f}")
+        print(f"Front threshold: {front_direction_threshold:.4f}")
+    print(f"Target: {hit_result['target']}")
+    print(f"Mode: {hit_result.get('mode')}")
+    print(f"Distance: {hit_result['distance_px']:.1f}px")
+    print(f"Hit: {hit_result['hit']}")
+    print(f"Result CSV: {output_csv}")
+    print(f"Result image: {output_png}")
+
+    return hit_result
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Evaluate predicted endpoint against 5 pixel targets.")
+    parser.add_argument("trajectory_csv", type=Path)
+    parser.add_argument("--analysis-csv", type=Path)
+    parser.add_argument("--config", type=Path)
+    parser.add_argument("--width", type=int, default=1920)
+    parser.add_argument("--height", type=int, default=1080)
+    parser.add_argument("--out", type=Path, default=Path("output/pixel_targets.png"))
+    parser.add_argument("--csv-out", type=Path, default=Path("output/pixel_targets.csv"))
+    args = parser.parse_args()
+
+    evaluate_pixel_targets(
+        trajectory_csv=args.trajectory_csv,
+        output_png=args.out,
+        output_csv=args.csv_out,
+        width=args.width,
+        height=args.height,
+        config_path=args.config,
+        analysis_csv=args.analysis_csv,
+    )
+
+
+if __name__ == "__main__":
+    main()
