@@ -9,6 +9,7 @@ from src.extract_landmarks import extract_pose
 from src.analyze_throw import analyze
 from src.front_camera import apply_front_camera_direction
 from src.object_tracker import track_object, correct_release_from_object_track, COLOR_RANGES
+from src.pixel_targets import evaluate_pixel_targets
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
 from src.render_analysis_preview import render_grid_trajectory, render_preview
@@ -159,6 +160,11 @@ def parse_args():
         help="Fix the rendered 2m endpoint this many pixels before the right edge.",
     )
     parser.add_argument(
+        "--target-config",
+        type=Path,
+        help="Optional JSON config with 5 pixel target centers and hit radius.",
+    )
+    parser.add_argument(
         "--track-object",
         action="store_true",
         help="Track a colored projectile after release and use it to correct trajectory.",
@@ -219,6 +225,7 @@ def run_analysis(
     release_offset_frames,
     trajectory_y_offset_px,
     endpoint_margin_px,
+    target_config,
     track_object_enabled,
     object_method,
     object_color,
@@ -239,6 +246,8 @@ def run_analysis(
     object_track_csv = output_dir / f"{run_name}_object_track.csv"
     trajectory_png = output_dir / f"{run_name}_trajectory.png"
     board_png = output_dir / f"{run_name}_board.png"
+    pixel_target_png = output_dir / f"{run_name}_pixel_targets.png"
+    pixel_target_csv = output_dir / f"{run_name}_pixel_targets.csv"
     analysis_preview = output_dir / f"{run_name}_analysis_preview.mp4"
     grid_trajectory_png = output_dir / f"{run_name}_grid_trajectory.png"
 
@@ -260,6 +269,7 @@ def run_analysis(
     print(f"Release offset frames: {release_offset_frames}")
     print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
     print(f"Endpoint margin: {endpoint_margin_px}px")
+    print(f"Target config: {target_config}")
     print(f"Front direction window: {front_direction_window}")
     print(f"Front horizontal gain: {front_horizontal_gain}")
     print(f"Track object: {track_object_enabled}")
@@ -376,7 +386,18 @@ def run_analysis(
         output_png=board_png,
     )
 
-    print("\n5. 분석 미리보기 영상 생성 중...")
+    print("\n5. 픽셀 과녁 결과 생성 중...")
+    evaluate_pixel_targets(
+        trajectory_csv=trajectory_csv,
+        analysis_csv=analysis_csv,
+        output_png=pixel_target_png,
+        output_csv=pixel_target_csv,
+        width=1920,
+        height=1080,
+        config_path=target_config,
+    )
+
+    print("\n6. 분석 미리보기 영상 생성 중...")
     render_preview(
         video_path=video_path,
         analysis_csv=analysis_csv,
@@ -387,7 +408,7 @@ def run_analysis(
         trajectory_y_offset_px=trajectory_y_offset_px,
     )
 
-    print("\n6. 1920x1080 격자 궤적 이미지 생성 중...")
+    print("\n7. 1920x1080 격자 궤적 이미지 생성 중...")
     render_grid_trajectory(
         trajectory_csv=trajectory_csv,
         output_image=grid_trajectory_png,
@@ -403,6 +424,8 @@ def run_analysis(
     print(f"좌표 CSV: {landmarks_csv}")
     print(f"분석 CSV: {analysis_csv}")
     print(f"궤적 이미지: {trajectory_png}")
+    print(f"픽셀 과녁 이미지: {pixel_target_png}")
+    print(f"픽셀 과녁 CSV: {pixel_target_csv}")
     print(f"분석 영상: {analysis_preview}")
     print(f"격자 궤적 이미지: {grid_trajectory_png}")
 
@@ -433,6 +456,7 @@ def main():
             release_offset_frames=args.release_offset_frames,
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,
+            target_config=args.target_config,
             track_object_enabled=args.track_object,
             object_method=args.object_method,
             object_color=args.object_color,
