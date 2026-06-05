@@ -240,6 +240,7 @@ def run_analysis(
     landmarks_csv = output_dir / f"{run_name}_landmarks.csv"
     front_landmarks_csv = output_dir / f"{run_name}_front_landmarks.csv"
     front_pose_preview = output_dir / f"{run_name}_front_pose_preview.mp4"
+    front_direction_png = output_dir / f"{run_name}_front_direction.png"
     pose_preview = output_dir / f"{run_name}_pose_preview.mp4"
     analysis_csv = output_dir / f"{run_name}_analysis.csv"
     trajectory_csv = output_dir / f"{run_name}_trajectory.csv"
@@ -317,6 +318,9 @@ def run_analysis(
             output_csv=analysis_csv,
             direction_window=front_direction_window,
             horizontal_gain=front_horizontal_gain,
+            front_video=front_video,
+            front_direction_image=front_direction_png,
+            front_flip_horizontal=front_flip_horizontal,
         )
 
     if track_object_enabled:
