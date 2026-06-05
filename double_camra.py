@@ -273,6 +273,7 @@ def parse_args():
         type=Path,
         help="Optional JSON config with 5 pixel target centers and hit radius.",
     )
+    parser.add_argument("--target-mirror-x", action="store_true")
     parser.add_argument("--track-object", action="store_true")
     parser.add_argument(
         "--object-method",
@@ -341,6 +342,7 @@ def main():
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,
             target_config=args.target_config,
+            target_mirror_x=args.target_mirror_x,
             track_object_enabled=args.track_object,
             object_method=args.object_method,
             object_color=args.object_color,

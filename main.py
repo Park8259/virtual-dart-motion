@@ -181,6 +181,11 @@ def parse_args():
         help="Optional JSON config with 5 pixel target centers and hit radius.",
     )
     parser.add_argument(
+        "--target-mirror-x",
+        action="store_true",
+        help="Mirror the final pixel target endpoint across the vertical center line.",
+    )
+    parser.add_argument(
         "--track-object",
         action="store_true",
         help="Track a colored projectile after release and use it to correct trajectory.",
@@ -244,6 +249,7 @@ def run_analysis(
     trajectory_y_offset_px,
     endpoint_margin_px,
     target_config,
+    target_mirror_x,
     track_object_enabled,
     object_method,
     object_color,
@@ -300,6 +306,7 @@ def run_analysis(
     print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
     print(f"Endpoint margin: {endpoint_margin_px}px")
     print(f"Target config: {target_config}")
+    print(f"Target mirror x: {target_mirror_x}")
     print(f"Front direction window: {front_direction_window}")
     print(f"Front frame offset: {front_frame_offset}")
     print(f"Front horizontal gain: {front_horizontal_gain}")
@@ -439,6 +446,7 @@ def run_analysis(
         width=1920,
         height=1080,
         config_path=target_config,
+        mirror_x=target_mirror_x,
     )
 
     print("\n6. 분석 미리보기 영상 생성 중...")
@@ -504,6 +512,7 @@ def main():
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,
             target_config=args.target_config,
+            target_mirror_x=args.target_mirror_x,
             track_object_enabled=args.track_object,
             object_method=args.object_method,
             object_color=args.object_color,

@@ -134,14 +134,11 @@ def render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output
     ax.set_aspect("equal")
 
     for name, (target_x, target_y) in targets.items():
-        is_nearest = name == hit_result["target"]
         is_hit = bool(hit_result["hit"])
-        if is_nearest and is_hit:
+        is_target_hit = name == hit_result["target"] and is_hit
+        if is_target_hit:
             color = "#ffcc33"
             edge = "#111111"
-        elif is_nearest:
-            color = "#ffd6d6"
-            edge = "#cc3333"
         else:
             color = "#dddddd"
             edge = "#777777"
@@ -197,6 +194,7 @@ def save_result_csv(endpoint_px, hit_result, output_csv):
                 "mode": hit_result.get("mode"),
                 "front_direction_x": hit_result.get("front_direction_x"),
                 "front_direction_full_scale": hit_result.get("front_direction_full_scale"),
+                "target_mirror_x": hit_result.get("target_mirror_x"),
             }
         ]
     ).to_csv(output_csv, index=False)
@@ -210,6 +208,7 @@ def evaluate_pixel_targets(
     height=1080,
     config_path=None,
     analysis_csv=None,
+    mirror_x=False,
 ):
     config = load_target_config(config_path, width, height)
     targets = config["targets"]
@@ -231,10 +230,15 @@ def evaluate_pixel_targets(
         full_scale=front_direction_full_scale,
     )
     endpoint_px = (endpoint_x, endpoint_y)
+    if mirror_x:
+        endpoint_x = width - endpoint_x
+        endpoint_px = (endpoint_x, endpoint_y)
+
     hit_result = nearest_target(endpoint_px, targets, hit_radius_px)
     hit_result["mode"] = mode
     hit_result["front_direction_x"] = front_direction_x
     hit_result["front_direction_full_scale"] = front_direction_full_scale
+    hit_result["target_mirror_x"] = mirror_x
 
     render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output_png, width, height)
     save_result_csv(endpoint_px, hit_result, output_csv)
@@ -242,6 +246,7 @@ def evaluate_pixel_targets(
     print("Pixel target result")
     print(f"Trajectory endpoint px: ({trajectory_endpoint_x:.1f}, {endpoint_y:.1f})")
     print(f"Final endpoint px: ({endpoint_x:.1f}, {endpoint_y:.1f})")
+    print(f"Target mirror x: {mirror_x}")
     if front_direction_x is not None:
         print(f"Front direction x: {front_direction_x:.4f}")
         print(f"Front threshold: {front_direction_threshold:.4f}")
@@ -263,6 +268,7 @@ def main():
     parser.add_argument("--config", type=Path)
     parser.add_argument("--width", type=int, default=1920)
     parser.add_argument("--height", type=int, default=1080)
+    parser.add_argument("--mirror-x", action="store_true")
     parser.add_argument("--out", type=Path, default=Path("output/pixel_targets.png"))
     parser.add_argument("--csv-out", type=Path, default=Path("output/pixel_targets.csv"))
     args = parser.parse_args()
@@ -275,6 +281,7 @@ def main():
         height=args.height,
         config_path=args.config,
         analysis_csv=args.analysis_csv,
+        mirror_x=args.mirror_x,
     )
 
 
