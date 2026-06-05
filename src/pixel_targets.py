@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 DEFAULT_HIT_RADIUS_PX = 140
 DEFAULT_FRONT_DIRECTION_THRESHOLD = 0.15
+DEFAULT_FRONT_DIRECTION_FULL_SCALE = 0.35
 
 
 def default_targets(width, height):
@@ -32,6 +33,7 @@ def load_target_config(config_path, width, height):
             "targets": default_targets(width, height),
             "hit_radius_px": DEFAULT_HIT_RADIUS_PX,
             "front_direction_threshold": DEFAULT_FRONT_DIRECTION_THRESHOLD,
+            "front_direction_full_scale": DEFAULT_FRONT_DIRECTION_FULL_SCALE,
         }
 
     with Path(config_path).open("r", encoding="utf-8") as file:
@@ -43,10 +45,15 @@ def load_target_config(config_path, width, height):
         "front_direction_threshold",
         DEFAULT_FRONT_DIRECTION_THRESHOLD,
     )
+    front_direction_full_scale = config.get(
+        "front_direction_full_scale",
+        DEFAULT_FRONT_DIRECTION_FULL_SCALE,
+    )
     return {
         "targets": targets,
         "hit_radius_px": hit_radius_px,
         "front_direction_threshold": front_direction_threshold,
+        "front_direction_full_scale": front_direction_full_scale,
     }
 
 
@@ -95,60 +102,29 @@ def nearest_target(endpoint_px, targets, hit_radius_px):
     }
 
 
-def nearest_vertical_target(endpoint_y, targets, hit_radius_px):
-    candidates = {
-        name: target
-        for name, target in targets.items()
-        if name in {"top", "center", "bottom"}
-    }
-    best_name = None
-    best_distance = math.inf
-
-    for name, (_, target_y) in candidates.items():
-        distance = abs(endpoint_y - target_y)
-        if distance < best_distance:
-            best_name = name
-            best_distance = distance
-
-    return {
-        "target": best_name,
-        "distance_px": best_distance,
-        "hit": best_distance <= hit_radius_px,
-    }
+def clamp(value, low, high):
+    return max(low, min(high, value))
 
 
-def classify_cross_target(endpoint_y, targets, hit_radius_px, front_direction_x, front_threshold):
-    if front_direction_x is not None:
-        if front_direction_x <= -front_threshold:
-            return {
-                "target": "left",
-                "distance_px": 0.0,
-                "hit": True,
-                "mode": "front_left_right",
-                "front_direction_x": front_direction_x,
-            }
-        if front_direction_x >= front_threshold:
-            return {
-                "target": "right",
-                "distance_px": 0.0,
-                "hit": True,
-                "mode": "front_left_right",
-                "front_direction_x": front_direction_x,
-            }
+def endpoint_with_front_direction(endpoint_y, targets, front_direction_x, full_scale):
+    center_x = float(targets["center"][0])
+    if front_direction_x is None:
+        return center_x, endpoint_y, "side_vertical_only"
 
-    vertical_result = nearest_vertical_target(endpoint_y, targets, hit_radius_px)
-    vertical_result["mode"] = "side_vertical"
-    vertical_result["front_direction_x"] = front_direction_x
-    return vertical_result
+    if full_scale <= 0:
+        full_scale = DEFAULT_FRONT_DIRECTION_FULL_SCALE
 
+    left_x = float(targets["left"][0])
+    right_x = float(targets["right"][0])
+    if front_direction_x < 0:
+        max_offset = center_x - left_x
+    else:
+        max_offset = right_x - center_x
 
-def display_endpoint_for_target(endpoint_y, targets, hit_result):
-    target = hit_result["target"]
-    if target in {"left", "right"}:
-        return targets[target][0], targets[target][1]
-    if target in {"top", "center", "bottom"}:
-        return targets[target][0], endpoint_y
-    return targets["center"][0], endpoint_y
+    ratio = clamp(front_direction_x / full_scale, -1.0, 1.0)
+    endpoint_x = center_x + ratio * max_offset
+    endpoint_x = clamp(endpoint_x, left_x, right_x)
+    return endpoint_x, endpoint_y, "front_continuous_x"
 
 
 def render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output_png, width, height):
@@ -210,6 +186,7 @@ def save_result_csv(endpoint_px, hit_result, output_csv):
                 "hit": hit_result["hit"],
                 "mode": hit_result.get("mode"),
                 "front_direction_x": hit_result.get("front_direction_x"),
+                "front_direction_full_scale": hit_result.get("front_direction_full_scale"),
             }
         ]
     ).to_csv(output_csv, index=False)
@@ -228,27 +205,37 @@ def evaluate_pixel_targets(
     targets = config["targets"]
     hit_radius_px = config["hit_radius_px"]
     front_direction_threshold = config["front_direction_threshold"]
+    front_direction_full_scale = config["front_direction_full_scale"]
 
-    endpoint_x, endpoint_y = endpoint_pixel_from_trajectory(trajectory_csv, width, height)
+    trajectory_endpoint_x, endpoint_y = endpoint_pixel_from_trajectory(
+        trajectory_csv,
+        width,
+        height,
+    )
     front_direction_x = front_direction_from_analysis(analysis_csv)
 
-    hit_result = classify_cross_target(
+    endpoint_x, endpoint_y, mode = endpoint_with_front_direction(
         endpoint_y=endpoint_y,
         targets=targets,
-        hit_radius_px=hit_radius_px,
         front_direction_x=front_direction_x,
-        front_threshold=front_direction_threshold,
+        full_scale=front_direction_full_scale,
     )
-    endpoint_px = display_endpoint_for_target(endpoint_y, targets, hit_result)
+    endpoint_px = (endpoint_x, endpoint_y)
+    hit_result = nearest_target(endpoint_px, targets, hit_radius_px)
+    hit_result["mode"] = mode
+    hit_result["front_direction_x"] = front_direction_x
+    hit_result["front_direction_full_scale"] = front_direction_full_scale
 
     render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output_png, width, height)
     save_result_csv(endpoint_px, hit_result, output_csv)
 
     print("Pixel target result")
-    print(f"Endpoint px: ({endpoint_x:.1f}, {endpoint_y:.1f})")
+    print(f"Trajectory endpoint px: ({trajectory_endpoint_x:.1f}, {endpoint_y:.1f})")
+    print(f"Final endpoint px: ({endpoint_x:.1f}, {endpoint_y:.1f})")
     if front_direction_x is not None:
         print(f"Front direction x: {front_direction_x:.4f}")
         print(f"Front threshold: {front_direction_threshold:.4f}")
+        print(f"Front full scale: {front_direction_full_scale:.4f}")
     print(f"Target: {hit_result['target']}")
     print(f"Mode: {hit_result.get('mode')}")
     print(f"Distance: {hit_result['distance_px']:.1f}px")
