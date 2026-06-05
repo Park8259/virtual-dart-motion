@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 
 DEFAULT_HIT_RADIUS_PX = 140
-DEFAULT_FRONT_DIRECTION_THRESHOLD = 0.35
+DEFAULT_FRONT_DIRECTION_THRESHOLD = 0.15
 
 
 def default_targets(width, height):
@@ -175,7 +175,7 @@ def render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output
     endpoint_x, endpoint_y = endpoint_px
     ax.scatter([endpoint_x], [endpoint_y], color="#ff3333", s=120, zorder=5)
     ax.text(endpoint_x + 16, endpoint_y - 16, "endpoint", color="#ff3333", fontsize=12)
-    if hit_result.get("mode") == "front_left_right":
+    if hit_result.get("front_direction_x") is not None:
         ax.text(
             width * 0.02,
             height * 0.08,
