@@ -2,7 +2,13 @@ import json
 import time
 from pathlib import Path
 
-import RPi.GPIO as GPIO
+try:
+    import RPi.GPIO as GPIO
+except (ImportError, RuntimeError) as exc:
+    GPIO = None
+    GPIO_ERROR = exc
+else:
+    GPIO_ERROR = None
 
 
 UP_LED = 17
@@ -28,6 +34,9 @@ TARGET_TO_ZONE = {
 
 
 def setup_gpio():
+    if GPIO is None:
+        return False
+
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
 
@@ -36,9 +45,13 @@ def setup_gpio():
     GPIO.setup(DOWN_LED, GPIO.OUT)
 
     clear_leds()
+    return True
 
 
 def clear_leds():
+    if GPIO is None:
+        return
+
     GPIO.output(UP_LED, GPIO.LOW)
     GPIO.output(MID_LED, GPIO.LOW)
     GPIO.output(DOWN_LED, GPIO.LOW)
@@ -73,6 +86,10 @@ def target_to_zone(target):
 
 
 def light_zone(zone):
+    if GPIO is None:
+        print(f"[LED skipped] RPi.GPIO is not available: {GPIO_ERROR}")
+        return
+
     clear_leds()
 
     if zone == "UP":
@@ -123,6 +140,9 @@ def process_hit(result_path=LATEST_RESULT_FILE):
 
 
 def cleanup():
+    if GPIO is None:
+        return
+
     clear_leds()
     GPIO.cleanup()
 
@@ -133,11 +153,12 @@ def run_once(
     cleanup_after=True,
 ):
     try:
-        setup_gpio()
+        gpio_ready = setup_gpio()
 
         zone = process_hit(result_path)
 
-        time.sleep(duration)
+        if gpio_ready:
+            time.sleep(duration)
 
         return zone
 
