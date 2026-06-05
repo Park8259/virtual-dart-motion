@@ -1,0 +1,26 @@
+{
+  "side_camera": {
+    "role": "side",
+    "model": "side phone model name",
+    "serial": "",
+    "shutter_x": 540,
+    "shutter_y": 2150,
+    "record_seconds": 2.0,
+    "save_wait_seconds": 3.0,
+    "remote_camera_dir": "/sdcard/DCIM/Camera",
+    "local_video_dir": "videos",
+    "beep_enabled": true
+  },
+  "front_camera": {
+    "role": "front",
+    "model": "front phone model name",
+    "serial": "",
+    "shutter_x": 540,
+    "shutter_y": 2150,
+    "record_seconds": 2.0,
+    "save_wait_seconds": 3.0,
+    "remote_camera_dir": "/sdcard/DCIM/Camera",
+    "local_video_dir": "videos",
+    "beep_enabled": true
+  }
+}
