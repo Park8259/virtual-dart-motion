@@ -12,7 +12,11 @@ from src.object_tracker import track_object, correct_release_from_object_track, 
 from src.pixel_targets import evaluate_pixel_targets
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
-from src.render_analysis_preview import render_grid_trajectory, render_preview
+from src.render_analysis_preview import (
+    render_grid_trajectory,
+    render_preview,
+    render_release_frame_image,
+)
 
 
 def find_latest_video(videos_dir):
@@ -112,6 +116,12 @@ def parse_args():
         help="Frames before the side release frame used for front left-right direction.",
     )
     parser.add_argument(
+        "--front-frame-offset",
+        type=int,
+        default=5,
+        help="Frame offset added to the side release frame for front camera direction.",
+    )
+    parser.add_argument(
         "--front-horizontal-gain",
         type=float,
         default=1.0,
@@ -142,6 +152,12 @@ def parse_args():
         help="Recent frames before release used to estimate throw direction.",
     )
     parser.add_argument(
+        "--min-visibility",
+        type=float,
+        default=0.5,
+        help="Minimum MediaPipe landmark visibility used for side camera tracking.",
+    )
+    parser.add_argument(
         "--release-offset-frames",
         type=int,
         default=0,
@@ -163,6 +179,12 @@ def parse_args():
         "--target-config",
         type=Path,
         help="Optional JSON config with 5 pixel target centers and hit radius.",
+    )
+    parser.add_argument(
+        "--target-mirror-x",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Mirror the final pixel target endpoint across the vertical center line.",
     )
     parser.add_argument(
         "--track-object",
@@ -217,15 +239,18 @@ def run_analysis(
     front_video,
     front_flip_horizontal,
     front_direction_window,
+    front_frame_offset,
     front_horizontal_gain,
     board_distance,
     physics_mode,
     dart_speed_mps,
     direction_window,
+    min_visibility,
     release_offset_frames,
     trajectory_y_offset_px,
     endpoint_margin_px,
     target_config,
+    target_mirror_x,
     track_object_enabled,
     object_method,
     object_color,
@@ -235,11 +260,21 @@ def run_analysis(
     object_release_lead_frames,
 ):
     run_name = build_run_name(video_path, flip_horizontal)
+    front_run_name = None
+    if front_video:
+        front_run_name = build_run_name(front_video, front_flip_horizontal)
 
     output_dir = Path("output") / run_name
     landmarks_csv = output_dir / f"{run_name}_landmarks.csv"
-    front_landmarks_csv = output_dir / f"{run_name}_front_landmarks.csv"
-    front_pose_preview = output_dir / f"{run_name}_front_pose_preview.mp4"
+    front_landmarks_csv = (
+        output_dir / f"{front_run_name}_landmarks.csv" if front_run_name else None
+    )
+    front_pose_preview = (
+        output_dir / f"{front_run_name}_pose_preview.mp4" if front_run_name else None
+    )
+    front_direction_png = (
+        output_dir / f"{front_run_name}_direction.png" if front_run_name else None
+    )
     pose_preview = output_dir / f"{run_name}_pose_preview.mp4"
     analysis_csv = output_dir / f"{run_name}_analysis.csv"
     trajectory_csv = output_dir / f"{run_name}_trajectory.csv"
@@ -249,6 +284,7 @@ def run_analysis(
     pixel_target_png = output_dir / f"{run_name}_pixel_targets.png"
     pixel_target_csv = output_dir / f"{run_name}_pixel_targets.csv"
     analysis_preview = output_dir / f"{run_name}_analysis_preview.mp4"
+    release_frame_png = output_dir / f"{run_name}_release_frame.png"
     grid_trajectory_png = output_dir / f"{run_name}_grid_trajectory.png"
 
     board_w = 16
@@ -266,11 +302,14 @@ def run_analysis(
     print(f"Physics mode: {physics_mode}")
     print(f"Dart speed: {dart_speed_mps}m/s")
     print(f"Direction window: {direction_window}")
+    print(f"Min visibility: {min_visibility}")
     print(f"Release offset frames: {release_offset_frames}")
     print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
     print(f"Endpoint margin: {endpoint_margin_px}px")
     print(f"Target config: {target_config}")
+    print(f"Target mirror x: {target_mirror_x}")
     print(f"Front direction window: {front_direction_window}")
+    print(f"Front frame offset: {front_frame_offset}")
     print(f"Front horizontal gain: {front_horizontal_gain}")
     print(f"Track object: {track_object_enabled}")
     print(f"Object method: {object_method}")
@@ -294,7 +333,7 @@ def run_analysis(
         window=5,
         lookback=10,
         direction_window=direction_window,
-        min_visibility=0.5,
+        min_visibility=min_visibility,
         board_w=board_w,
         board_h=board_h,
         sensitivity=0.35,
@@ -317,6 +356,10 @@ def run_analysis(
             output_csv=analysis_csv,
             direction_window=front_direction_window,
             horizontal_gain=front_horizontal_gain,
+            frame_offset=front_frame_offset,
+            front_video=front_video,
+            front_direction_image=front_direction_png,
+            front_flip_horizontal=front_flip_horizontal,
         )
 
     if track_object_enabled:
@@ -345,6 +388,15 @@ def run_analysis(
             )
     else:
         object_track_csv = None
+
+    print("\n2-3. 릴리즈 시점 이미지 저장 중...")
+    render_release_frame_image(
+        video_path=video_path,
+        analysis_csv=analysis_csv,
+        output_image=release_frame_png,
+        hand=hand,
+        flip_horizontal=flip_horizontal,
+    )
 
     print("\n3. 가상 다트 궤적 예측 중...")
     screen_endpoint_x = normalized_screen_endpoint_x(video_path, endpoint_margin_px)
@@ -395,6 +447,7 @@ def run_analysis(
         width=1920,
         height=1080,
         config_path=target_config,
+        mirror_x=target_mirror_x,
     )
 
     print("\n6. 분석 미리보기 영상 생성 중...")
@@ -427,6 +480,7 @@ def run_analysis(
     print(f"픽셀 과녁 이미지: {pixel_target_png}")
     print(f"픽셀 과녁 CSV: {pixel_target_csv}")
     print(f"분석 영상: {analysis_preview}")
+    print(f"릴리즈 이미지: {release_frame_png}")
     print(f"격자 궤적 이미지: {grid_trajectory_png}")
 
 
@@ -448,15 +502,18 @@ def main():
             front_video=args.front_video,
             front_flip_horizontal=args.front_flip_horizontal,
             front_direction_window=args.front_direction_window,
+            front_frame_offset=args.front_frame_offset,
             front_horizontal_gain=args.front_horizontal_gain,
             board_distance=args.board_distance,
             physics_mode=args.physics_mode,
             dart_speed_mps=args.dart_speed_mps,
             direction_window=args.direction_window,
+            min_visibility=args.min_visibility,
             release_offset_frames=args.release_offset_frames,
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,
             target_config=args.target_config,
+            target_mirror_x=args.target_mirror_x,
             track_object_enabled=args.track_object,
             object_method=args.object_method,
             object_color=args.object_color,
