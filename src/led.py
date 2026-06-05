@@ -9,18 +9,26 @@ UP_LED = 17
 MID_LED = 27
 DOWN_LED = 22
 
-PX_OUTPUT_FILE = Path("output/pxoutput.json")
+LATEST_RESULT_FILE = Path("output/latest_result.json")
+
+LIGHT_DURATION_SECONDS = 5
 
 
-UP_RANGE = (750, 850)
-MID_RANGE = (550, 650)
-DOWN_RANGE = (350, 450)
+TARGET_TO_ZONE = {
+    "top": "UP",
+    "center": "MID",
+    "bottom": "DOWN",
+
+    # 현재 하드웨어는 LED 3개만 사용하므로
+    # left/right는 임시로 center와 같은 MID에 매핑합니다.
+    # 추후 LED가 늘어나면 여기만 확장하면 됩니다.
+    "left": "MID",
+    "right": "MID",
+}
 
 
 def setup_gpio():
-
     GPIO.setwarnings(False)
-
     GPIO.setmode(GPIO.BCM)
 
     GPIO.setup(UP_LED, GPIO.OUT)
@@ -31,127 +39,118 @@ def setup_gpio():
 
 
 def clear_leds():
-
     GPIO.output(UP_LED, GPIO.LOW)
     GPIO.output(MID_LED, GPIO.LOW)
     GPIO.output(DOWN_LED, GPIO.LOW)
 
 
-def load_px_result():
+def load_latest_result(result_path=LATEST_RESULT_FILE):
+    result_path = Path(result_path)
 
-    if not PX_OUTPUT_FILE.exists():
-
+    if not result_path.exists():
         raise FileNotFoundError(
-            f"PX output file not found: {PX_OUTPUT_FILE}"
+            f"Latest result file not found: {result_path}"
         )
 
-    with open(
-        PX_OUTPUT_FILE,
-        "r",
-        encoding="utf-8"
-    ) as f:
-
-        return json.load(f)
+    with result_path.open("r", encoding="utf-8") as result_file:
+        return json.load(result_file)
 
 
-def classify_zone(hit_y_px):
+def normalize_target(target):
+    if target is None:
+        return "miss"
 
-    if UP_RANGE[0] <= hit_y_px <= UP_RANGE[1]:
+    return str(target).strip().lower()
 
-        return "UP"
 
-    if MID_RANGE[0] <= hit_y_px <= MID_RANGE[1]:
+def target_to_zone(target):
+    normalized_target = normalize_target(target)
 
-        return "MID"
-
-    if DOWN_RANGE[0] <= hit_y_px <= DOWN_RANGE[1]:
-
-        return "DOWN"
-
-    return "MISS"
+    return TARGET_TO_ZONE.get(
+        normalized_target,
+        "MISS"
+    )
 
 
 def light_zone(zone):
-
     clear_leds()
 
     if zone == "UP":
-
-        GPIO.output(
-            UP_LED,
-            GPIO.HIGH
-        )
+        GPIO.output(UP_LED, GPIO.HIGH)
 
     elif zone == "MID":
-
-        GPIO.output(
-            MID_LED,
-            GPIO.HIGH
-        )
+        GPIO.output(MID_LED, GPIO.HIGH)
 
     elif zone == "DOWN":
+        GPIO.output(DOWN_LED, GPIO.HIGH)
 
-        GPIO.output(
-            DOWN_LED,
-            GPIO.HIGH
-        )
+    elif zone == "MISS":
+        clear_leds()
+
+    else:
+        clear_leds()
 
 
-def process_hit():
+def process_hit(result_path=LATEST_RESULT_FILE):
+    result = load_latest_result(result_path)
 
-    result = load_px_result()
-
-    hit_x_px = result.get(
-        "hit_x_px",
-        None
+    target = normalize_target(
+        result.get("target")
     )
 
-    hit_y_px = result.get(
-        "hit_y_px",
-        None
-    )
+    zone = target_to_zone(target)
 
-    if hit_y_px is None:
-
-        raise ValueError(
-            "hit_y_px not found"
-        )
-
-    zone = classify_zone(hit_y_px)
+    hit = result.get("hit")
+    endpoint_x_px = result.get("endpoint_x_px")
+    endpoint_y_px = result.get("endpoint_y_px")
+    distance_px = result.get("distance_px")
+    video_name = result.get("video_name")
 
     light_zone(zone)
 
     print("\n====================")
     print("LED RESULT")
     print("====================")
-    print(f"Hit X: {hit_x_px}")
-    print(f"Hit Y: {hit_y_px}")
-    print(f"Zone : {zone}")
+    print(f"Video       : {video_name}")
+    print(f"Target      : {target}")
+    print(f"Zone        : {zone}")
+    print(f"Hit         : {hit}")
+    print(f"Endpoint X  : {endpoint_x_px}")
+    print(f"Endpoint Y  : {endpoint_y_px}")
+    print(f"Distance px : {distance_px}")
 
     return zone
 
 
 def cleanup():
-
     clear_leds()
     GPIO.cleanup()
 
 
-def main():
-
+def run_once(
+    result_path=LATEST_RESULT_FILE,
+    duration=LIGHT_DURATION_SECONDS,
+    cleanup_after=True,
+):
     try:
-
         setup_gpio()
 
-        process_hit()
+        zone = process_hit(result_path)
 
-        time.sleep(5)
+        time.sleep(duration)
+
+        return zone
 
     finally:
+        if cleanup_after:
+            cleanup()
+        else:
+            clear_leds()
 
-        cleanup()
+
+def main():
+    run_once()
 
 
 if __name__ == "__main__":
-
     main()

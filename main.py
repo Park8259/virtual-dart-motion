@@ -15,6 +15,7 @@ from src.pixel_targets import evaluate_pixel_targets
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
 from src.render_analysis_preview import render_grid_trajectory, render_preview
+from src.led import run_once
 
 
 def find_latest_video(videos_dir):
@@ -104,6 +105,7 @@ def write_latest_result(
     analysis_preview,
     grid_trajectory_png,
 ):
+    
     if not pixel_target_csv.exists():
         raise FileNotFoundError(
             f"Pixel target CSV not found: {pixel_target_csv}"
@@ -651,6 +653,9 @@ def run_analysis(
         analysis_preview=analysis_preview,
         grid_trajectory_png=grid_trajectory_png,
     )
+
+    print("\n8. LED 결과 표시 중...")
+    run_once()
 
 
 def main():
