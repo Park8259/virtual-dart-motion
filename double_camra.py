@@ -273,7 +273,7 @@ def parse_args():
         type=Path,
         help="Optional JSON config with 5 pixel target centers and hit radius.",
     )
-    parser.add_argument("--target-mirror-x", action="store_true")
+    parser.add_argument("--target-mirror-x", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--track-object", action="store_true")
     parser.add_argument(
         "--object-method",

@@ -208,7 +208,7 @@ def evaluate_pixel_targets(
     height=1080,
     config_path=None,
     analysis_csv=None,
-    mirror_x=False,
+    mirror_x=True,
 ):
     config = load_target_config(config_path, width, height)
     targets = config["targets"]
@@ -268,7 +268,7 @@ def main():
     parser.add_argument("--config", type=Path)
     parser.add_argument("--width", type=int, default=1920)
     parser.add_argument("--height", type=int, default=1080)
-    parser.add_argument("--mirror-x", action="store_true")
+    parser.add_argument("--mirror-x", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--out", type=Path, default=Path("output/pixel_targets.png"))
     parser.add_argument("--csv-out", type=Path, default=Path("output/pixel_targets.csv"))
     args = parser.parse_args()

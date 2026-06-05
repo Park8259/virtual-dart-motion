@@ -182,7 +182,8 @@ def parse_args():
     )
     parser.add_argument(
         "--target-mirror-x",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Mirror the final pixel target endpoint across the vertical center line.",
     )
     parser.add_argument(
