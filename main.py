@@ -12,7 +12,11 @@ from src.object_tracker import track_object, correct_release_from_object_track, 
 from src.pixel_targets import evaluate_pixel_targets
 from src.trajectory import predict
 from src.simulate_board import read_hit_position, render_board
-from src.render_analysis_preview import render_grid_trajectory, render_preview
+from src.render_analysis_preview import (
+    render_grid_trajectory,
+    render_preview,
+    render_release_frame_image,
+)
 
 
 def find_latest_video(videos_dir):
@@ -273,6 +277,7 @@ def run_analysis(
     pixel_target_png = output_dir / f"{run_name}_pixel_targets.png"
     pixel_target_csv = output_dir / f"{run_name}_pixel_targets.csv"
     analysis_preview = output_dir / f"{run_name}_analysis_preview.mp4"
+    release_frame_png = output_dir / f"{run_name}_release_frame.png"
     grid_trajectory_png = output_dir / f"{run_name}_grid_trajectory.png"
 
     board_w = 16
@@ -376,6 +381,15 @@ def run_analysis(
     else:
         object_track_csv = None
 
+    print("\n2-3. 릴리즈 시점 이미지 저장 중...")
+    render_release_frame_image(
+        video_path=video_path,
+        analysis_csv=analysis_csv,
+        output_image=release_frame_png,
+        hand=hand,
+        flip_horizontal=flip_horizontal,
+    )
+
     print("\n3. 가상 다트 궤적 예측 중...")
     screen_endpoint_x = normalized_screen_endpoint_x(video_path, endpoint_margin_px)
     predict(
@@ -457,6 +471,7 @@ def run_analysis(
     print(f"픽셀 과녁 이미지: {pixel_target_png}")
     print(f"픽셀 과녁 CSV: {pixel_target_csv}")
     print(f"분석 영상: {analysis_preview}")
+    print(f"릴리즈 이미지: {release_frame_png}")
     print(f"격자 궤적 이미지: {grid_trajectory_png}")
 
 

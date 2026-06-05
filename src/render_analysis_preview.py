@@ -308,6 +308,63 @@ def render_preview(
     print(f"Preview saved: {output_video}")
 
 
+def render_release_frame_image(
+    video_path,
+    analysis_csv,
+    output_image,
+    hand="right",
+    flip_horizontal=False,
+):
+    _, start_row, release_row = read_markers(analysis_csv)
+    release_frame = int(release_row["frame_index"])
+
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise FileNotFoundError(f"Cannot open video: {video_path}")
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, release_frame)
+    ok, frame = cap.read()
+    cap.release()
+    if not ok:
+        raise ValueError(f"Cannot read release frame: {release_frame}")
+
+    if flip_horizontal:
+        frame = cv2.flip(frame, 1)
+
+    height, width = frame.shape[:2]
+    start_x, start_y = point_from_row(start_row, hand, "start")
+    release_x, release_y = point_from_row(release_row, hand, "release")
+
+    if not any(pd.isna(value) for value in [start_x, start_y, release_x, release_y]):
+        start_px = (int(start_x * width), int(start_y * height))
+        release_px = (int(release_x * width), int(release_y * height))
+        cv2.arrowedLine(
+            frame,
+            start_px,
+            release_px,
+            (0, 255, 255),
+            5,
+            cv2.LINE_AA,
+            tipLength=0.2,
+        )
+
+    draw_point_marker(frame, start_row, hand, "start", "START", (0, 255, 0))
+    draw_point_marker(frame, release_row, hand, "release", "RELEASE", (0, 0, 255))
+    draw_label(
+        frame,
+        f"release frame: {release_frame}",
+        (24, 42),
+        (0, 255, 255),
+    )
+
+    output_path = Path(output_image)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(output_path), frame)
+
+    print(f"Release frame image: {output_path}")
+    print(f"Release candidate frame: {release_frame}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Render a video preview with start, release candidate, and animated trajectory."
