@@ -254,6 +254,7 @@ def parse_args():
     parser.add_argument("--flip-horizontal", action="store_true")
     parser.add_argument("--front-flip-horizontal", action="store_true")
     parser.add_argument("--front-direction-window", type=int, default=20)
+    parser.add_argument("--front-frame-offset", type=int, default=5)
     parser.add_argument("--front-horizontal-gain", type=float, default=1.0)
     parser.add_argument("--board-distance", type=float, default=2.0)
     parser.add_argument(
@@ -328,6 +329,7 @@ def main():
             front_video=front_video,
             front_flip_horizontal=args.front_flip_horizontal,
             front_direction_window=args.front_direction_window,
+            front_frame_offset=args.front_frame_offset,
             front_horizontal_gain=args.front_horizontal_gain,
             board_distance=args.board_distance,
             physics_mode=args.physics_mode,

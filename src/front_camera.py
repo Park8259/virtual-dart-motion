@@ -156,6 +156,7 @@ def apply_front_camera_direction(
     output_csv=None,
     direction_window=20,
     horizontal_gain=1.0,
+    frame_offset=5,
     front_video=None,
     front_direction_image=None,
     front_flip_horizontal=False,
@@ -168,22 +169,27 @@ def apply_front_camera_direction(
         raise ValueError("No release candidate frame found in side analysis CSV.")
 
     release_row = release_rows.iloc[0]
-    release_frame = int(release_row["frame_index"])
+    side_release_frame = int(release_row["frame_index"])
+    front_release_frame = max(0, side_release_frame + int(frame_offset))
 
     if motion_point == "auto":
         motion_point = release_row.get("throw_motion_point", "auto")
     result = analyze_front_direction(
         front_landmarks_csv=front_landmarks_csv,
-        release_frame=release_frame,
+        release_frame=front_release_frame,
         hand=hand,
         motion_point=motion_point,
         direction_window=direction_window,
         horizontal_gain=horizontal_gain,
     )
 
+    result["side_release_frame"] = side_release_frame
+    result["front_frame_offset"] = int(frame_offset)
     side_df["throw_side_direction_x"] = side_df["throw_direction_x"]
     side_df["throw_direction_x"] = result["front_direction_x"]
     side_df["front_camera_enabled"] = True
+    side_df["front_side_release_frame"] = side_release_frame
+    side_df["front_frame_offset"] = int(frame_offset)
     side_df["front_motion_point"] = result["front_motion_point"]
     side_df["front_release_frame"] = result["front_release_frame"]
     side_df["front_start_frame"] = result["front_start_frame"]
@@ -198,7 +204,8 @@ def apply_front_camera_direction(
 
     print("Front camera direction correction")
     print(f"Front landmarks CSV: {front_landmarks_csv}")
-    print(f"Release frame: {release_frame}")
+    print(f"Side release frame: {side_release_frame}")
+    print(f"Front frame offset: {frame_offset}")
     print(f"Front frame used: {result['front_release_frame']}")
     print(f"Front motion point: {result['front_motion_point']}")
     print(f"Front raw movement: dx={result['front_raw_dx']:.4f}, dy={result['front_raw_dy']:.4f}")

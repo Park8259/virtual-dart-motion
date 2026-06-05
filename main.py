@@ -112,6 +112,12 @@ def parse_args():
         help="Frames before the side release frame used for front left-right direction.",
     )
     parser.add_argument(
+        "--front-frame-offset",
+        type=int,
+        default=5,
+        help="Frame offset added to the side release frame for front camera direction.",
+    )
+    parser.add_argument(
         "--front-horizontal-gain",
         type=float,
         default=1.0,
@@ -217,6 +223,7 @@ def run_analysis(
     front_video,
     front_flip_horizontal,
     front_direction_window,
+    front_frame_offset,
     front_horizontal_gain,
     board_distance,
     physics_mode,
@@ -235,12 +242,21 @@ def run_analysis(
     object_release_lead_frames,
 ):
     run_name = build_run_name(video_path, flip_horizontal)
+    front_run_name = None
+    if front_video:
+        front_run_name = build_run_name(front_video, front_flip_horizontal)
 
     output_dir = Path("output") / run_name
     landmarks_csv = output_dir / f"{run_name}_landmarks.csv"
-    front_landmarks_csv = output_dir / f"{run_name}_front_landmarks.csv"
-    front_pose_preview = output_dir / f"{run_name}_front_pose_preview.mp4"
-    front_direction_png = output_dir / f"{run_name}_front_direction.png"
+    front_landmarks_csv = (
+        output_dir / f"{front_run_name}_landmarks.csv" if front_run_name else None
+    )
+    front_pose_preview = (
+        output_dir / f"{front_run_name}_pose_preview.mp4" if front_run_name else None
+    )
+    front_direction_png = (
+        output_dir / f"{front_run_name}_direction.png" if front_run_name else None
+    )
     pose_preview = output_dir / f"{run_name}_pose_preview.mp4"
     analysis_csv = output_dir / f"{run_name}_analysis.csv"
     trajectory_csv = output_dir / f"{run_name}_trajectory.csv"
@@ -272,6 +288,7 @@ def run_analysis(
     print(f"Endpoint margin: {endpoint_margin_px}px")
     print(f"Target config: {target_config}")
     print(f"Front direction window: {front_direction_window}")
+    print(f"Front frame offset: {front_frame_offset}")
     print(f"Front horizontal gain: {front_horizontal_gain}")
     print(f"Track object: {track_object_enabled}")
     print(f"Object method: {object_method}")
@@ -318,6 +335,7 @@ def run_analysis(
             output_csv=analysis_csv,
             direction_window=front_direction_window,
             horizontal_gain=front_horizontal_gain,
+            frame_offset=front_frame_offset,
             front_video=front_video,
             front_direction_image=front_direction_png,
             front_flip_horizontal=front_flip_horizontal,
@@ -452,6 +470,7 @@ def main():
             front_video=args.front_video,
             front_flip_horizontal=args.front_flip_horizontal,
             front_direction_window=args.front_direction_window,
+            front_frame_offset=args.front_frame_offset,
             front_horizontal_gain=args.front_horizontal_gain,
             board_distance=args.board_distance,
             physics_mode=args.physics_mode,
