@@ -178,6 +178,20 @@ def build_dart_trajectory(
     return points, flight_duration, vx_mps, vy_mps, forward_speed
 
 
+def marker_extension_direction(start_row, release_row, hand, fallback_x, fallback_y):
+    start_x, start_y = row_point(start_row, hand, "start")
+    release_x, release_y = row_point(release_row, hand, "release")
+
+    if not any(pd.isna(value) for value in [start_x, start_y, release_x, release_y]):
+        marker_direction_x = release_x - start_x
+        marker_direction_y = release_y - start_y
+        direction_x, direction_y = normalize_vector(marker_direction_x, marker_direction_y)
+        if direction_x != 0.0 or direction_y != 0.0:
+            return direction_x, direction_y
+
+    return side_extension_direction(release_row, fallback_x, fallback_y)
+
+
 def side_extension_direction(release_row, direction_x, direction_y):
     side_direction_x = release_row.get("throw_side_direction_x", direction_x)
     if pd.isna(side_direction_x):
@@ -445,8 +459,10 @@ def predict(
     using_object_correction = points is not None
 
     if physics_mode == "extend" and not using_object_correction:
-        direction_x, direction_y = side_extension_direction(
+        direction_x, direction_y = marker_extension_direction(
+            start_row,
             release_row,
+            hand,
             direction_x,
             direction_y,
         )
