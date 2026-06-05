@@ -39,6 +39,23 @@
       text-shadow:
         0 0 6px rgba(255, 48, 48, 0.8);
     }
+
+    .calibration-title {
+      margin-top: 10px;
+      margin-bottom: 8px;
+      color: #9ecfff;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 0.4px;
+    }
+
+    .calibration-hint {
+      margin-top: -4px;
+      margin-bottom: 8px;
+      color: #9ca3af;
+      font-size: 12px;
+      line-height: 1.3;
+    }
   </style>
 </head>
 
@@ -68,6 +85,35 @@
           type="text"
           id="player2Name"
           placeholder="PLAYER 2 NAME">
+
+        <div class="calibration-title">
+          Calibration Settings
+        </div>
+
+        <div class="calibration-hint">
+          START ANALYSIS 실행 시 아래 보정값이 함께 전달됩니다.
+        </div>
+
+        <input
+          type="number"
+          id="dartSpeedMps"
+          value="10"
+          step="0.1"
+          placeholder="DART SPEED MPS">
+
+        <input
+          type="number"
+          id="trajectoryYOffsetPx"
+          value="0"
+          step="1"
+          placeholder="TRAJECTORY Y OFFSET PX">
+
+        <input
+          type="number"
+          id="frontHorizontalGain"
+          value="0.4"
+          step="0.1"
+          placeholder="FRONT HORIZONTAL GAIN">
 
         <div class="upload-box">
           <form id="uploadForm">
@@ -487,6 +533,45 @@ function resetGame() {
 
 }
 
+function getCalibrationValues() {
+
+  const dartSpeedInput =
+    document.getElementById("dartSpeedMps");
+
+  const trajectoryYOffsetInput =
+    document.getElementById("trajectoryYOffsetPx");
+
+  const frontHorizontalGainInput =
+    document.getElementById("frontHorizontalGain");
+
+  const dartSpeedMps =
+    Number(dartSpeedInput.value);
+
+  const trajectoryYOffsetPx =
+    Number(trajectoryYOffsetInput.value);
+
+  const frontHorizontalGain =
+    Number(frontHorizontalGainInput.value);
+
+  return {
+    dart_speed_mps:
+      Number.isFinite(dartSpeedMps)
+        ? dartSpeedMps
+        : 10.0,
+
+    trajectory_y_offset_px:
+      Number.isFinite(trajectoryYOffsetPx)
+        ? trajectoryYOffsetPx
+        : 0,
+
+    front_horizontal_gain:
+      Number.isFinite(frontHorizontalGain)
+        ? frontHorizontalGain
+        : 0.4
+  };
+
+}
+
 document
   .getElementById("player1Name")
   .addEventListener(
@@ -533,17 +618,24 @@ form.addEventListener("submit", async (e) => {
   document.getElementById("p2Label").innerText =
     p2 || "P2";
 
+  const calibrationValues =
+    getCalibrationValues();
+
   document.getElementById("loading").innerText =
-    "ADB CAMERA RECORDING...";
+    "DOUBLE CAMERA RECORDING...";
 
   document.getElementById("statusText").innerText =
-    "CAPTURING VIDEO";
+    "CAPTURING SIDE / FRONT VIDEO";
 
   try {
 
     const response =
       await fetch("/analyze", {
-        method: "POST"
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(calibrationValues)
       });
 
     const data =
@@ -612,8 +704,13 @@ form.addEventListener("submit", async (e) => {
         ? ` / DISTANCE : ${Number(data.distance_px).toFixed(1)}px`
         : "";
 
+    const calibrationText =
+      ` / SPEED : ${Number(calibrationValues.dart_speed_mps).toFixed(1)}`
+      + ` / Y-OFFSET : ${calibrationValues.trajectory_y_offset_px}`
+      + ` / FRONT-GAIN : ${Number(calibrationValues.front_horizontal_gain).toFixed(2)}`;
+
     document.getElementById("hitText").innerText =
-      `TARGET : ${String(target).toUpperCase()}${endpointText}${distanceText}`;
+      `TARGET : ${String(target).toUpperCase()}${endpointText}${distanceText}${calibrationText}`;
 
     document.getElementById("statusText").innerText =
       "BOARD UPDATED";
