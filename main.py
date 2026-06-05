@@ -1,8 +1,10 @@
 import argparse
+import json
 import sys
 from pathlib import Path
 
 import cv2
+import pandas as pd
 
 from src.adb_capture import AdbCaptureError, capture_video
 from src.extract_landmarks import extract_pose
@@ -17,6 +19,7 @@ from src.render_analysis_preview import render_grid_trajectory, render_preview
 
 def find_latest_video(videos_dir):
     videos = []
+
     for pattern in ["*.mp4", "*.mov", "*.MOV", "*.MP4"]:
         videos.extend(videos_dir.glob(pattern))
 
@@ -28,183 +31,376 @@ def find_latest_video(videos_dir):
 
 def build_run_name(video_path, flip_horizontal):
     run_name = video_path.stem
+
     if flip_horizontal:
         run_name = f"{run_name}_flipped"
+
     return run_name
 
 
 def normalized_screen_endpoint_x(video_path, endpoint_margin_px):
     cap = cv2.VideoCapture(str(video_path))
+
     if not cap.isOpened():
         raise FileNotFoundError(f"Cannot open video: {video_path}")
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+
     cap.release()
 
     if width <= 0:
         return None
 
     margin = max(0, min(endpoint_margin_px, width - 1))
+
     return (width - margin) / width
 
 
+def safe_float(value, default=None):
+    if value is None:
+        return default
+
+    if pd.isna(value):
+        return default
+
+    return float(value)
+
+
+def safe_string(value, default=None):
+    if value is None:
+        return default
+
+    if pd.isna(value):
+        return default
+
+    return str(value)
+
+
+def safe_bool(value):
+    if value is None:
+        return False
+
+    if isinstance(value, bool):
+        return value
+
+    if pd.isna(value):
+        return False
+
+    if isinstance(value, str):
+        return value.strip().lower() in ["true", "1", "yes", "y"]
+
+    return bool(value)
+
+
+def write_latest_result(
+    run_name,
+    video_path,
+    hit_x,
+    hit_y,
+    trajectory_png,
+    board_png,
+    pixel_target_png,
+    pixel_target_csv,
+    analysis_preview,
+    grid_trajectory_png,
+):
+    if not pixel_target_csv.exists():
+        raise FileNotFoundError(
+            f"Pixel target CSV not found: {pixel_target_csv}"
+        )
+
+    pixel_df = pd.read_csv(pixel_target_csv)
+
+    if pixel_df.empty:
+        raise ValueError(
+            f"Pixel target CSV is empty: {pixel_target_csv}"
+        )
+
+    pixel_row = pixel_df.iloc[0]
+
+    target = safe_string(
+        pixel_row.get("target"),
+        default="center"
+    )
+
+    endpoint_x_px = safe_float(
+        pixel_row.get("endpoint_x_px"),
+        default=960.0
+    )
+
+    endpoint_y_px = safe_float(
+        pixel_row.get("endpoint_y_px"),
+        default=540.0
+    )
+
+    distance_px = safe_float(
+        pixel_row.get("distance_px"),
+        default=None
+    )
+
+    pixel_hit = safe_bool(
+        pixel_row.get("hit")
+    )
+
+    mode = safe_string(
+        pixel_row.get("mode"),
+        default=None
+    )
+
+    front_direction_x = safe_float(
+        pixel_row.get("front_direction_x"),
+        default=None
+    )
+
+    latest_result = {
+        "success": True,
+
+        "run_name": run_name,
+
+        "hit_x": int(hit_x),
+        "hit_y": int(hit_y),
+
+        "target": target,
+        "endpoint_x_px": endpoint_x_px,
+        "endpoint_y_px": endpoint_y_px,
+        "distance_px": distance_px,
+        "hit": pixel_hit,
+        "mode": mode,
+        "front_direction_x": front_direction_x,
+
+        "video_name": video_path.name,
+
+        "trajectory_image":
+            f"/output/{run_name}/{trajectory_png.name}",
+
+        "board_image":
+            f"/output/{run_name}/{board_png.name}",
+
+        "pixel_target_image":
+            f"/output/{run_name}/{pixel_target_png.name}",
+
+        "preview_video":
+            f"/output/{run_name}/{analysis_preview.name}",
+
+        "grid_trajectory_image":
+            f"/output/{run_name}/{grid_trajectory_png.name}",
+
+        "pixel_target_csv":
+            f"/output/{run_name}/{pixel_target_csv.name}",
+    }
+
+    latest_result_path = Path("output") / "latest_result.json"
+
+    latest_result_path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with latest_result_path.open(
+        "w",
+        encoding="utf-8"
+    ) as result_file:
+        json.dump(
+            latest_result,
+            result_file,
+            ensure_ascii=False,
+            indent=2
+        )
+
+    print(f"Latest result saved: {latest_result_path}")
+    print(f"Target: {target}")
+    print(f"Endpoint px: ({endpoint_x_px}, {endpoint_y_px})")
+
+    return latest_result
+
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run virtual dart motion analysis.")
+    parser = argparse.ArgumentParser(
+        description="Run virtual dart motion analysis."
+    )
+
     parser.add_argument(
         "input_video",
         nargs="?",
         type=Path,
         help="Input video path. If omitted, the latest video in videos/ is used.",
     )
+
     parser.add_argument(
         "--video",
         type=Path,
         help="Input video path. Kept for compatibility with the ADB workflow.",
     )
+
     parser.add_argument(
         "--adb-capture",
         action="store_true",
         help="Record a new video over ADB, pull it into videos/, then analyze it.",
     )
+
     parser.add_argument(
         "--config",
         type=Path,
         default=Path("adb_config.json"),
         help="ADB capture config path.",
     )
+
     parser.add_argument(
         "--hand",
         choices=["right", "left"],
         default="right",
         help="Throwing hand to analyze.",
     )
+
     parser.add_argument(
         "--motion-point",
         choices=["auto", "wrist", "thumb_tip", "index_tip", "middle_tip"],
         default="auto",
         help="Landmark used for release timing and trajectory start.",
     )
+
     parser.add_argument(
         "--start-mode",
         choices=["recent", "video-start"],
         default="video-start",
         help="How to choose the throw start frame.",
     )
+
     parser.add_argument(
         "--flip-horizontal",
         action="store_true",
         help="Flip mirrored/selfie videos before analysis.",
     )
+
     parser.add_argument(
         "--front-video",
         type=Path,
         help="Optional front camera video used to correct left-right direction.",
     )
+
     parser.add_argument(
         "--front-flip-horizontal",
         action="store_true",
         help="Flip the front camera video before extracting landmarks.",
     )
+
     parser.add_argument(
         "--front-direction-window",
         type=int,
         default=20,
         help="Frames before the side release frame used for front left-right direction.",
     )
+
     parser.add_argument(
         "--front-horizontal-gain",
         type=float,
         default=1.0,
         help="Scale applied to front camera left-right direction.",
     )
+
     parser.add_argument(
         "--board-distance",
         type=float,
         default=2.0,
         help="Fixed distance from thrower to virtual board in meters.",
     )
+
     parser.add_argument(
         "--physics-mode",
         choices=["simple", "dart"],
         default="dart",
         help="Trajectory model to use.",
     )
+
     parser.add_argument(
         "--dart-speed-mps",
         type=float,
         default=8.0,
         help="Initial dart speed in meters per second for dart physics mode.",
     )
+
     parser.add_argument(
         "--direction-window",
         type=int,
         default=20,
         help="Recent frames before release used to estimate throw direction.",
     )
+
     parser.add_argument(
         "--release-offset-frames",
         type=int,
         default=0,
         help="Move the detected release frame this many frames earlier.",
     )
+
     parser.add_argument(
         "--trajectory-y-offset-px",
         type=int,
         default=0,
         help="Move the rendered trajectory upward by this many pixels in the preview video.",
     )
+
     parser.add_argument(
         "--endpoint-margin-px",
         type=int,
         default=10,
         help="Fix the rendered 2m endpoint this many pixels before the right edge.",
     )
+
     parser.add_argument(
         "--target-config",
         type=Path,
         help="Optional JSON config with 5 pixel target centers and hit radius.",
     )
+
     parser.add_argument(
         "--track-object",
         action="store_true",
         help="Track a colored projectile after release and use it to correct trajectory.",
     )
+
     parser.add_argument(
         "--object-method",
         choices=["color", "flow"],
         default="flow",
         help="Projectile tracking method when --track-object is enabled.",
     )
+
     parser.add_argument(
         "--object-color",
         choices=sorted(COLOR_RANGES),
         default="green",
         help="Projectile color to track when --track-object is enabled.",
     )
+
     parser.add_argument(
         "--object-min-area",
         type=float,
         default=20,
         help="Minimum contour area for projectile tracking.",
     )
+
     parser.add_argument(
         "--object-max-frames",
         type=int,
         default=40,
         help="Maximum frames to scan after release for projectile tracking.",
     )
+
     parser.add_argument(
         "--object-min-motion-px",
         type=float,
         default=4.0,
         help="Minimum optical-flow motion in pixels.",
     )
+
     parser.add_argument(
         "--object-release-lead-frames",
         type=int,
         default=3,
         help="Move release marker this many frames before first tracked object frame.",
     )
+
     return parser.parse_args()
 
 
@@ -234,9 +430,13 @@ def run_analysis(
     object_min_motion_px,
     object_release_lead_frames,
 ):
-    run_name = build_run_name(video_path, flip_horizontal)
+    run_name = build_run_name(
+        video_path,
+        flip_horizontal
+    )
 
     output_dir = Path("output") / run_name
+
     landmarks_csv = output_dir / f"{run_name}_landmarks.csv"
     front_landmarks_csv = output_dir / f"{run_name}_front_landmarks.csv"
     front_pose_preview = output_dir / f"{run_name}_front_pose_preview.mp4"
@@ -309,6 +509,7 @@ def run_analysis(
             preview_path=front_pose_preview,
             flip_horizontal=front_flip_horizontal,
         )
+
         apply_front_camera_direction(
             side_analysis_csv=analysis_csv,
             front_landmarks_csv=front_landmarks_csv,
@@ -332,11 +533,13 @@ def run_analysis(
             flip_horizontal=flip_horizontal,
             min_motion_px=object_min_motion_px,
         )
+
         correction = correct_release_from_object_track(
             analysis_csv=analysis_csv,
             object_track_csv=object_track_csv,
             lead_frames=object_release_lead_frames,
         )
+
         if correction:
             print(
                 "Release corrected from object track: "
@@ -347,7 +550,11 @@ def run_analysis(
         object_track_csv = None
 
     print("\n3. 가상 다트 궤적 예측 중...")
-    screen_endpoint_x = normalized_screen_endpoint_x(video_path, endpoint_margin_px)
+    screen_endpoint_x = normalized_screen_endpoint_x(
+        video_path,
+        endpoint_margin_px
+    )
+
     predict(
         analysis_csv=analysis_csv,
         hand=hand,
@@ -377,7 +584,10 @@ def run_analysis(
     )
 
     print("\n4. 가상 보드 결과 이미지 생성 중...")
-    hit_x, hit_y = read_hit_position(trajectory_csv)
+    hit_x, hit_y = read_hit_position(
+        trajectory_csv
+    )
+
     render_board(
         hit_x=hit_x,
         hit_y=hit_y,
@@ -429,15 +639,34 @@ def run_analysis(
     print(f"분석 영상: {analysis_preview}")
     print(f"격자 궤적 이미지: {grid_trajectory_png}")
 
+    write_latest_result(
+        run_name=run_name,
+        video_path=video_path,
+        hit_x=hit_x,
+        hit_y=hit_y,
+        trajectory_png=trajectory_png,
+        board_png=board_png,
+        pixel_target_png=pixel_target_png,
+        pixel_target_csv=pixel_target_csv,
+        analysis_preview=analysis_preview,
+        grid_trajectory_png=grid_trajectory_png,
+    )
+
 
 def main():
     args = parse_args()
 
     try:
         if args.adb_capture:
-            video_path = capture_video(args.config)
+            video_path = capture_video(
+                args.config
+            )
         else:
-            video_path = args.video or args.input_video or find_latest_video(Path("videos"))
+            video_path = (
+                args.video
+                or args.input_video
+                or find_latest_video(Path("videos"))
+            )
 
         run_analysis(
             video_path=video_path,
@@ -465,6 +694,7 @@ def main():
             object_min_motion_px=args.object_min_motion_px,
             object_release_lead_frames=args.object_release_lead_frames,
         )
+
     except AdbCaptureError as exc:
         print(f"[ADB 오류] {exc}", file=sys.stderr)
         return 1
