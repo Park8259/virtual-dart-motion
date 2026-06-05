@@ -266,6 +266,11 @@ def parse_args():
     parser.add_argument("--release-offset-frames", type=int, default=0)
     parser.add_argument("--trajectory-y-offset-px", type=int, default=0)
     parser.add_argument("--endpoint-margin-px", type=int, default=10)
+    parser.add_argument(
+        "--target-config",
+        type=Path,
+        help="Optional JSON config with 5 pixel target centers and hit radius.",
+    )
     parser.add_argument("--track-object", action="store_true")
     parser.add_argument(
         "--object-method",
@@ -331,6 +336,7 @@ def main():
             release_offset_frames=args.release_offset_frames,
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,
+            target_config=args.target_config,
             track_object_enabled=args.track_object,
             object_method=args.object_method,
             object_color=args.object_color,
