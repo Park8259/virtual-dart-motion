@@ -76,19 +76,25 @@ def filter_unreliable_motion(df, hand, motion_point, min_visibility):
         visibility_columns.append(point_visibility)
     available_visibility = [column for column in visibility_columns if column in df.columns]
 
-    if available_visibility:
+    point = point_prefix(hand, motion_point)
+    point_has_coordinates = df[f"{point}_x"].notna() & df[f"{point}_y"].notna()
+    base_tracking_ok = (df["pose_detected"] == True) & point_has_coordinates
+
+    if available_visibility and min_visibility > 0:
         df["tracking_ok"] = df["pose_detected"] == True
         for column in available_visibility:
             df["tracking_ok"] = df["tracking_ok"] & (df[column] >= min_visibility)
     else:
         df["tracking_ok"] = df["pose_detected"] == True
 
-    point = point_prefix(hand, motion_point)
-    df["tracking_ok"] = (
-        df["tracking_ok"]
-        & df[f"{point}_x"].notna()
-        & df[f"{point}_y"].notna()
-    )
+    df["tracking_ok"] = df["tracking_ok"] & point_has_coordinates
+
+    if df["tracking_ok"].sum() < 2 and base_tracking_ok.sum() >= 2:
+        print(
+            "[WARN] Visibility filter removed all usable motion points. "
+            "Falling back to coordinate-only tracking."
+        )
+        df["tracking_ok"] = base_tracking_ok
 
     speed_cap = df.loc[df["tracking_ok"], "speed"].quantile(0.98)
     if pd.isna(speed_cap) or speed_cap <= 0:

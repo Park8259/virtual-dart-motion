@@ -148,6 +148,12 @@ def parse_args():
         help="Recent frames before release used to estimate throw direction.",
     )
     parser.add_argument(
+        "--min-visibility",
+        type=float,
+        default=0.5,
+        help="Minimum MediaPipe landmark visibility used for side camera tracking.",
+    )
+    parser.add_argument(
         "--release-offset-frames",
         type=int,
         default=0,
@@ -229,6 +235,7 @@ def run_analysis(
     physics_mode,
     dart_speed_mps,
     direction_window,
+    min_visibility,
     release_offset_frames,
     trajectory_y_offset_px,
     endpoint_margin_px,
@@ -283,6 +290,7 @@ def run_analysis(
     print(f"Physics mode: {physics_mode}")
     print(f"Dart speed: {dart_speed_mps}m/s")
     print(f"Direction window: {direction_window}")
+    print(f"Min visibility: {min_visibility}")
     print(f"Release offset frames: {release_offset_frames}")
     print(f"Trajectory Y offset: {trajectory_y_offset_px}px")
     print(f"Endpoint margin: {endpoint_margin_px}px")
@@ -312,7 +320,7 @@ def run_analysis(
         window=5,
         lookback=10,
         direction_window=direction_window,
-        min_visibility=0.5,
+        min_visibility=min_visibility,
         board_w=board_w,
         board_h=board_h,
         sensitivity=0.35,
@@ -476,6 +484,7 @@ def main():
             physics_mode=args.physics_mode,
             dart_speed_mps=args.dart_speed_mps,
             direction_window=args.direction_window,
+            min_visibility=args.min_visibility,
             release_offset_frames=args.release_offset_frames,
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,

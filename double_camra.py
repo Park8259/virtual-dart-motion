@@ -264,6 +264,7 @@ def parse_args():
     )
     parser.add_argument("--dart-speed-mps", type=float, default=8.0)
     parser.add_argument("--direction-window", type=int, default=20)
+    parser.add_argument("--min-visibility", type=float, default=0.5)
     parser.add_argument("--release-offset-frames", type=int, default=0)
     parser.add_argument("--trajectory-y-offset-px", type=int, default=0)
     parser.add_argument("--endpoint-margin-px", type=int, default=10)
@@ -335,6 +336,7 @@ def main():
             physics_mode=args.physics_mode,
             dart_speed_mps=args.dart_speed_mps,
             direction_window=args.direction_window,
+            min_visibility=args.min_visibility,
             release_offset_frames=args.release_offset_frames,
             trajectory_y_offset_px=args.trajectory_y_offset_px,
             endpoint_margin_px=args.endpoint_margin_px,
