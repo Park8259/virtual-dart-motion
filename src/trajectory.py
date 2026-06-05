@@ -178,6 +178,66 @@ def build_dart_trajectory(
     return points, flight_duration, vx_mps, vy_mps, forward_speed
 
 
+def side_extension_direction(release_row, direction_x, direction_y):
+    side_direction_x = release_row.get("throw_side_direction_x", direction_x)
+    if pd.isna(side_direction_x):
+        side_direction_x = direction_x
+
+    if pd.isna(direction_y):
+        direction_y = 0.0
+
+    return normalize_vector(float(side_direction_x), float(direction_y))
+
+
+def build_extended_trajectory(
+    release_x,
+    release_y,
+    direction_x,
+    direction_y,
+    screen_endpoint_x,
+    duration,
+    gravity,
+    steps,
+):
+    if steps < 2:
+        raise ValueError("--steps must be at least 2")
+    if screen_endpoint_x is None:
+        screen_endpoint_x = 1.0
+
+    direction_x, direction_y = normalize_vector(direction_x, direction_y)
+    if abs(direction_x) < 1e-6:
+        direction_x = 1.0
+    if direction_x < 0:
+        direction_x *= -1.0
+        direction_y *= -1.0
+
+    endpoint_x = screen_endpoint_x
+    delta_x = endpoint_x - release_x
+    if delta_x <= 0:
+        endpoint_x = min(1.0, max(release_x + 0.01, screen_endpoint_x))
+        delta_x = endpoint_x - release_x
+
+    slope = direction_y / direction_x
+    points = []
+    for i in range(steps):
+        progress = i / (steps - 1)
+        t = duration * progress
+        x = release_x + delta_x * progress
+        y = release_y + slope * delta_x * progress
+        points.append(
+            {
+                "point_index": i,
+                "t": t,
+                "progress": progress,
+                "x": x,
+                "y": y,
+                "is_2m_endpoint": i == steps - 1,
+            }
+        )
+
+    return points, duration, direction_x, direction_y
+
+
 def endpoint_to_board(endpoint, release_x, release_y, board_w, board_h, board_scale):
     center_x = (board_w - 1) / 2
     center_y = (board_h - 1) / 2
@@ -384,7 +444,34 @@ def predict(
     )
     using_object_correction = points is not None
 
-    if physics_mode == "dart" and not using_object_correction:
+    if physics_mode == "extend" and not using_object_correction:
+        direction_x, direction_y = side_extension_direction(
+            release_row,
+            direction_x,
+            direction_y,
+        )
+        flight_duration = estimate_flight_duration(
+            release_speed=release_speed,
+            board_distance=board_distance,
+            speed_to_mps=speed_to_mps,
+            min_duration=min_duration,
+            max_duration=max_duration,
+            fallback_duration=duration,
+        )
+        points, flight_duration, direction_x, direction_y = build_extended_trajectory(
+            release_x=release_x,
+            release_y=release_y,
+            direction_x=direction_x,
+            direction_y=direction_y,
+            screen_endpoint_x=screen_endpoint_x,
+            duration=flight_duration,
+            gravity=gravity,
+            steps=steps,
+        )
+        dart_vx_mps = math.nan
+        dart_vy_mps = math.nan
+        dart_forward_mps = math.nan
+    elif physics_mode == "dart" and not using_object_correction:
         points, flight_duration, dart_vx_mps, dart_vy_mps, dart_forward_mps = build_dart_trajectory(
             release_x=release_x,
             release_y=release_y,
@@ -526,8 +613,8 @@ def main():
     )
     parser.add_argument(
         "--physics-mode",
-        choices=["simple", "dart"],
-        default="dart",
+        choices=["simple", "dart", "extend"],
+        default="extend",
         help="Trajectory model to use",
     )
     parser.add_argument(

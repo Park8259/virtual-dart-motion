@@ -259,8 +259,8 @@ def parse_args():
     parser.add_argument("--board-distance", type=float, default=2.0)
     parser.add_argument(
         "--physics-mode",
-        choices=["simple", "dart"],
-        default="dart",
+        choices=["simple", "dart", "extend"],
+        default="extend",
     )
     parser.add_argument("--dart-speed-mps", type=float, default=8.0)
     parser.add_argument("--direction-window", type=int, default=20)

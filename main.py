@@ -319,8 +319,8 @@ def parse_args():
 
     parser.add_argument(
         "--physics-mode",
-        choices=["simple", "dart"],
-        default="dart",
+        choices=["simple", "dart", "extend"],
+        default="extend",
         help="Trajectory model to use.",
     )
 
