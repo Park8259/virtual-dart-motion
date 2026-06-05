@@ -134,8 +134,17 @@ def render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output
     ax.set_aspect("equal")
 
     for name, (target_x, target_y) in targets.items():
-        color = "#ffcc33" if name == hit_result["target"] else "#dddddd"
-        edge = "#111111" if name == hit_result["target"] else "#777777"
+        is_nearest = name == hit_result["target"]
+        is_hit = bool(hit_result["hit"])
+        if is_nearest and is_hit:
+            color = "#ffcc33"
+            edge = "#111111"
+        elif is_nearest:
+            color = "#ffd6d6"
+            edge = "#cc3333"
+        else:
+            color = "#dddddd"
+            edge = "#777777"
         circle = plt.Circle(
             (target_x, target_y),
             hit_radius_px,
@@ -159,8 +168,9 @@ def render_pixel_targets(endpoint_px, targets, hit_result, hit_radius_px, output
             fontsize=12,
             color="#333333",
         )
+    status = "HIT" if hit_result["hit"] else "MISS"
     ax.set_title(
-        f"Pixel Target Result: {hit_result['target']} / "
+        f"Pixel Target Result: {status} / nearest={hit_result['target']} / "
         f"hit={hit_result['hit']} / mode={hit_result.get('mode', 'nearest')} / "
         f"distance={hit_result['distance_px']:.1f}px"
     )
