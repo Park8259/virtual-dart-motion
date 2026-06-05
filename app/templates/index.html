@@ -4,6 +4,59 @@
   <meta charset="UTF-8">
   <title>Virtual Dart Motion</title>
   <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+    .cross-board {
+      position: relative;
+    }
+
+    #endpointMarker {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ff3030;
+      border: 2px solid #ffffff;
+      box-shadow:
+        0 0 10px #ff3030,
+        0 0 20px #ff3030,
+        0 0 34px rgba(255, 48, 48, 0.8);
+      transform: translate(-50%, -50%);
+      z-index: 20;
+      display: none;
+      pointer-events: none;
+    }
+
+    #endpointMarker::after {
+      content: "endpoint";
+      position: absolute;
+      left: 24px;
+      top: -10px;
+      color: #ff5555;
+      font-size: 13px;
+      font-weight: bold;
+      white-space: nowrap;
+      text-shadow:
+        0 0 6px rgba(255, 48, 48, 0.8);
+    }
+
+    .calibration-title {
+      margin-top: 10px;
+      margin-bottom: 8px;
+      color: #9ecfff;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 0.4px;
+    }
+
+    .calibration-hint {
+      margin-top: -4px;
+      margin-bottom: 8px;
+      color: #9ca3af;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+  </style>
 </head>
 
 <body>
@@ -11,18 +64,14 @@
 <div class="container">
 
   <div class="header">
-
     <h1>Virtual Dart Motion</h1>
-
     <p>AI Motion Based Dart Game</p>
-
   </div>
 
   <div class="dashboard">
 
     <!-- LEFT -->
     <div>
-
       <div class="panel">
 
         <h2>System Status</h2>
@@ -37,162 +86,172 @@
           id="player2Name"
           placeholder="PLAYER 2 NAME">
 
+        <div class="calibration-title">
+          Calibration Settings
+        </div>
+
+        <div class="calibration-hint">
+          START ANALYSIS 실행 시 아래 보정값이 함께 전달됩니다.
+        </div>
+
+        <input
+          type="number"
+          id="dartSpeedMps"
+          value="10"
+          step="0.1"
+          placeholder="DART SPEED MPS">
+
+        <input
+          type="number"
+          id="trajectoryYOffsetPx"
+          value="0"
+          step="1"
+          placeholder="TRAJECTORY Y OFFSET PX">
+
+        <input
+          type="number"
+          id="frontHorizontalGain"
+          value="0.4"
+          step="0.1"
+          placeholder="FRONT HORIZONTAL GAIN">
+
         <div class="upload-box">
-
           <form id="uploadForm">
-
             <button
               type="submit"
               id="startButton">
-
               START ANALYSIS
-
             </button>
-
           </form>
 
           <div id="loading"></div>
-
         </div>
 
         <button
           class="reset-button"
           onclick="resetGame()">
-
           RESET GAME
-
         </button>
 
         <div class="result-box">
-
           <h3>Analysis Status</h3>
-
-          <p id="statusText">
-
-            READY
-
-          </p>
-
+          <p id="statusText">READY</p>
         </div>
 
         <div class="result-box">
-
           <h3>Latest Video</h3>
-
-          <p id="videoText">
-
-            WAITING
-
-          </p>
-
+          <p id="videoText">WAITING</p>
         </div>
 
         <div class="result-box">
-
           <h3>Last Throw Result</h3>
-
-          <p id="hitText">
-
-            NO DATA
-
-          </p>
-
+          <p id="hitText">NO DATA</p>
         </div>
 
       </div>
-
     </div>
 
     <!-- CENTER -->
     <div>
-
       <div class="panel">
 
         <h2>Smart Target Board</h2>
 
-        <div class="board" id="board">
+        <div
+          class="cross-board"
+          id="crossBoard">
+
+          <div
+            id="target-top"
+            class="target-circle">
+            TOP
+          </div>
+
+          <div class="middle-row">
+
+            <div
+              id="target-left"
+              class="target-circle">
+              LEFT
+            </div>
+
+            <div
+              id="target-center"
+              class="target-circle center">
+              CENTER
+            </div>
+
+            <div
+              id="target-right"
+              class="target-circle">
+              RIGHT
+            </div>
+
+          </div>
+
+          <div
+            id="target-bottom"
+            class="target-circle">
+            BOTTOM
+          </div>
+
+          <div id="endpointMarker"></div>
 
         </div>
 
       </div>
-
     </div>
 
     <!-- RIGHT -->
     <div>
-
       <div class="panel">
 
         <h2>Game Status</h2>
 
         <div class="player-box">
-
           <p>현재 플레이어</p>
-
           <h3
             class="turn"
             id="currentPlayerText">
-
             PLAYER 1
-
           </h3>
-
         </div>
 
         <div class="player-box">
-
           <p>현재 ROUND</p>
-
           <h3
             class="turn"
             id="roundText">
-
             ROUND 1 / 3
-
           </h3>
-
         </div>
 
         <div class="player-box">
-
           <p>현재 점수</p>
 
           <div class="score">
-
             <div>
-
               <span id="p1Label">P1</span> :
               <span id="player1Score">0</span>
-
             </div>
 
             <div>
-
               <span id="p2Label">P2</span> :
               <span id="player2Score">0</span>
-
             </div>
-
           </div>
-
         </div>
 
         <div class="player-box">
-
           <p>WINNER</p>
-
           <h3
             class="turn"
             id="winnerText">
-
             -
-
           </h3>
-
         </div>
 
       </div>
-
     </div>
 
   </div>
@@ -202,10 +261,11 @@
 <script>
 
 let currentPlayer = 1;
-
 let currentRound = 1;
-
 const MAX_ROUND = 3;
+
+const SCREEN_WIDTH = 1920;
+const SCREEN_HEIGHT = 1080;
 
 let gameEnded = false;
 
@@ -214,95 +274,151 @@ let playerScores = {
   2: 0
 };
 
-const board =
-  document.getElementById("board");
+function clearTargetHighlight() {
 
-const BOARD_SIZE = 5;
+  document
+    .querySelectorAll(".target-circle")
+    .forEach(target => {
+      target.classList.remove("active");
+    });
 
-function createBoard() {
+}
 
-  board.innerHTML = "";
+function clearEndpointMarker() {
 
-  for (let y = 0; y < BOARD_SIZE; y++) {
+  const marker =
+    document.getElementById("endpointMarker");
 
-    for (let x = 0; x < BOARD_SIZE; x++) {
+  marker.style.display = "none";
 
-      const cell =
-        document.createElement("div");
+}
 
-      cell.classList.add("cell");
+function activateTarget(target) {
 
-      if (x === 2 && y === 2) {
+  clearTargetHighlight();
 
-        cell.classList.add("red");
+  if (!target) {
+    return;
+  }
 
-      }
-      else if (
-        Math.abs(x - 2) <= 1 &&
-        Math.abs(y - 2) <= 1
-      ) {
+  const normalizedTarget =
+    String(target).toLowerCase();
 
-        cell.classList.add("yellow");
+  const selected =
+    document.getElementById(
+      `target-${normalizedTarget}`
+    );
 
-      }
-      else {
-
-        cell.classList.add("green");
-
-      }
-
-      cell.dataset.x = x;
-      cell.dataset.y = y;
-
-      board.appendChild(cell);
-
-    }
-
+  if (selected) {
+    selected.classList.add("active");
   }
 
 }
 
-function clearBoardHighlight() {
+function showEndpointMarker(endpointXPx, endpointYPx) {
 
-  const cells =
-    document.querySelectorAll(".cell");
+  if (
+    endpointXPx === undefined ||
+    endpointYPx === undefined ||
+    endpointXPx === null ||
+    endpointYPx === null
+  ) {
+    clearEndpointMarker();
+    return;
+  }
 
-  cells.forEach(cell => {
+  const board =
+    document.getElementById("crossBoard");
 
-    cell.classList.remove("active");
+  const marker =
+    document.getElementById("endpointMarker");
 
-  });
+  const boardRect =
+    board.getBoundingClientRect();
+
+  const xRatio =
+    Number(endpointXPx) / SCREEN_WIDTH;
+
+  const yRatio =
+    Number(endpointYPx) / SCREEN_HEIGHT;
+
+  const markerX =
+    Math.max(
+      0,
+      Math.min(
+        boardRect.width,
+        boardRect.width * xRatio
+      )
+    );
+
+  const markerY =
+    Math.max(
+      0,
+      Math.min(
+        boardRect.height,
+        boardRect.height * yRatio
+      )
+    );
+
+  marker.style.left =
+    `${markerX}px`;
+
+  marker.style.top =
+    `${markerY}px`;
+
+  marker.style.display =
+    "block";
 
 }
 
-function activateBoardCell(hitX, hitY) {
+function getTargetFromLegacyHit(hitX, hitY) {
 
-  clearBoardHighlight();
+  if (hitX === undefined || hitY === undefined) {
+    return "center";
+  }
 
-  const boardX =
-    Math.floor(hitX / 16 * BOARD_SIZE);
+  const x = Number(hitX);
+  const y = Number(hitY);
 
-  const boardY =
-    Math.floor(hitY / 16 * BOARD_SIZE);
+  if (x <= 4) {
+    return "left";
+  }
 
-  const cells =
-    document.querySelectorAll(".cell");
+  if (x >= 11) {
+    return "right";
+  }
 
-  cells.forEach(cell => {
+  if (y <= 5) {
+    return "top";
+  }
 
-    const x =
-      parseInt(cell.dataset.x);
+  if (y >= 10) {
+    return "bottom";
+  }
 
-    const y =
-      parseInt(cell.dataset.y);
+  return "center";
 
-    if (x === boardX && y === boardY) {
+}
 
-      cell.classList.add("active");
+function scoreFromTarget(target) {
 
-    }
+  const normalizedTarget =
+    String(target).toLowerCase();
 
-  });
+  if (normalizedTarget === "center") {
+    return 100;
+  }
+
+  if (
+    normalizedTarget === "top" ||
+    normalizedTarget === "left" ||
+    normalizedTarget === "right" ||
+    normalizedTarget === "bottom"
+  ) {
+    return 70;
+  }
+
+  return 0;
 
 }
 
@@ -312,9 +428,7 @@ function showScorePopup(score) {
     document.createElement("div");
 
   popup.classList.add("score-popup");
-
-  popup.innerText =
-    `+${score}`;
+  popup.innerText = `+${score}`;
 
   popup.style.left =
     `${window.innerWidth / 2}px`;
@@ -325,10 +439,31 @@ function showScorePopup(score) {
   document.body.appendChild(popup);
 
   setTimeout(() => {
-
     popup.remove();
-
   }, 1000);
+
+}
+
+function updateCurrentPlayerName() {
+
+  const p1 =
+    document.getElementById("player1Name")
+      .value
+      .trim();
+
+  const p2 =
+    document.getElementById("player2Name")
+      .value
+      .trim();
+
+  if (currentPlayer === 1) {
+    document.getElementById("currentPlayerText").innerText =
+      p1 || "PLAYER 1";
+  }
+  else {
+    document.getElementById("currentPlayerText").innerText =
+      p2 || "PLAYER 2";
+  }
 
 }
 
@@ -339,24 +474,18 @@ function finishGame() {
   let winner = "DRAW";
 
   if (playerScores[1] > playerScores[2]) {
-
     winner =
       document.getElementById("p1Label").innerText;
-
   }
   else if (playerScores[2] > playerScores[1]) {
-
     winner =
       document.getElementById("p2Label").innerText;
-
   }
 
   const winnerText =
     document.getElementById("winnerText");
 
-  winnerText.innerText =
-    winner;
-
+  winnerText.innerText = winner;
   winnerText.classList.add("game-over");
 
   document.getElementById("statusText").innerText =
@@ -367,9 +496,7 @@ function finishGame() {
 function resetGame() {
 
   currentPlayer = 1;
-
   currentRound = 1;
-
   gameEnded = false;
 
   playerScores = {
@@ -378,15 +505,13 @@ function resetGame() {
   };
 
   document.getElementById("player1Score").innerText = 0;
-
   document.getElementById("player2Score").innerText = 0;
 
   document.getElementById("winnerText").innerText = "-";
-
   document.getElementById("winnerText")
     .classList.remove("game-over");
 
-updateCurrentPlayerName();
+  updateCurrentPlayerName();
 
   document.getElementById("roundText").innerText =
     "ROUND 1 / 3";
@@ -403,40 +528,47 @@ updateCurrentPlayerName();
   document.getElementById("loading").innerText =
     "";
 
-  clearBoardHighlight();
+  clearTargetHighlight();
+  clearEndpointMarker();
 
 }
 
-createBoard();
+function getCalibrationValues() {
 
-function updateCurrentPlayerName() {
+  const dartSpeedInput =
+    document.getElementById("dartSpeedMps");
 
-  const p1 =
-    document.getElementById("player1Name")
-    .value
-    .trim();
+  const trajectoryYOffsetInput =
+    document.getElementById("trajectoryYOffsetPx");
 
-  const p2 =
-    document.getElementById("player2Name")
-    .value
-    .trim();
+  const frontHorizontalGainInput =
+    document.getElementById("frontHorizontalGain");
 
-  if (currentPlayer === 1) {
+  const dartSpeedMps =
+    Number(dartSpeedInput.value);
 
-    document.getElementById(
-      "currentPlayerText"
-    ).innerText =
-      p1 || "PLAYER 1";
+  const trajectoryYOffsetPx =
+    Number(trajectoryYOffsetInput.value);
 
-  }
-  else {
+  const frontHorizontalGain =
+    Number(frontHorizontalGainInput.value);
 
-    document.getElementById(
-      "currentPlayerText"
-    ).innerText =
-      p2 || "PLAYER 2";
+  return {
+    dart_speed_mps:
+      Number.isFinite(dartSpeedMps)
+        ? dartSpeedMps
+        : 10.0,
 
-  }
+    trajectory_y_offset_px:
+      Number.isFinite(trajectoryYOffsetPx)
+        ? trajectoryYOffsetPx
+        : 0,
+
+    front_horizontal_gain:
+      Number.isFinite(frontHorizontalGain)
+        ? frontHorizontalGain
+        : 0.4
+  };
 
 }
 
@@ -462,54 +594,48 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   if (gameEnded) {
-
     alert("게임이 종료되었습니다.");
-
     return;
-
   }
 
   const startButton =
     document.getElementById("startButton");
 
   startButton.disabled = true;
+  startButton.innerText = "ANALYZING...";
 
-  startButton.innerText =
-    "ANALYZING...";
+  clearEndpointMarker();
 
   const p1 =
-    document.getElementById("player1Name").value;
+    document.getElementById("player1Name").value.trim();
 
   const p2 =
-    document.getElementById("player2Name").value;
+    document.getElementById("player2Name").value.trim();
 
-  if (p1) {
+  document.getElementById("p1Label").innerText =
+    p1 || "P1";
 
-    document.getElementById("p1Label").innerText =
-      p1;
+  document.getElementById("p2Label").innerText =
+    p2 || "P2";
 
-  }
-
-  if (p2) {
-
-    document.getElementById("p2Label").innerText =
-      p2;
-
-  }
+  const calibrationValues =
+    getCalibrationValues();
 
   document.getElementById("loading").innerText =
-    "ADB CAMERA RECORDING...";
+    "DOUBLE CAMERA RECORDING...";
 
   document.getElementById("statusText").innerText =
-    "CAPTURING VIDEO";
+    "CAPTURING SIDE / FRONT VIDEO";
 
   try {
 
     const response =
       await fetch("/analyze", {
-
-        method: "POST"
-
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(calibrationValues)
       });
 
     const data =
@@ -521,12 +647,10 @@ form.addEventListener("submit", async (e) => {
         "ERROR";
 
       document.getElementById("loading").innerText =
-        data.error;
+        data.error || "UNKNOWN ERROR";
 
       startButton.disabled = false;
-
-      startButton.innerText =
-        "START ANALYSIS";
+      startButton.innerText = "START ANALYSIS";
 
       return;
 
@@ -539,21 +663,23 @@ form.addEventListener("submit", async (e) => {
       "PROCESSING";
 
     document.getElementById("videoText").innerText =
-      data.video_name;
+      data.video_name || "UNKNOWN VIDEO";
 
-    activateBoardCell(
-      data.hit_x,
-      data.hit_y
+    const target =
+      data.target || getTargetFromLegacyHit(
+        data.hit_x,
+        data.hit_y
+      );
+
+    activateTarget(target);
+
+    showEndpointMarker(
+      data.endpoint_x_px,
+      data.endpoint_y_px
     );
 
     const score =
-      Math.max(
-        0,
-        100 - (
-          Math.abs(data.hit_x - 7) +
-          Math.abs(data.hit_y - 7)
-        ) * 10
-      );
+      scoreFromTarget(target);
 
     showScorePopup(score);
 
@@ -565,8 +691,26 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("player2Score").innerText =
       playerScores[2];
 
+    const endpointText =
+      (
+        data.endpoint_x_px !== undefined &&
+        data.endpoint_y_px !== undefined
+      )
+        ? ` / ENDPOINT : (${Number(data.endpoint_x_px).toFixed(1)}, ${Number(data.endpoint_y_px).toFixed(1)})`
+        : "";
+
+    const distanceText =
+      data.distance_px !== undefined && data.distance_px !== null
+        ? ` / DISTANCE : ${Number(data.distance_px).toFixed(1)}px`
+        : "";
+
+    const calibrationText =
+      ` / SPEED : ${Number(calibrationValues.dart_speed_mps).toFixed(1)}`
+      + ` / Y-OFFSET : ${calibrationValues.trajectory_y_offset_px}`
+      + ` / FRONT-GAIN : ${Number(calibrationValues.front_horizontal_gain).toFixed(2)}`;
+
     document.getElementById("hitText").innerText =
-      `HIT POSITION : (${data.hit_x}, ${data.hit_y})`;
+      `TARGET : ${String(target).toUpperCase()}${endpointText}${distanceText}${calibrationText}`;
 
     document.getElementById("statusText").innerText =
       "BOARD UPDATED";
@@ -575,19 +719,14 @@ form.addEventListener("submit", async (e) => {
       "ANALYSIS COMPLETE";
 
     if (currentPlayer === 1) {
-
       currentPlayer = 2;
-
     }
     else {
-
       currentPlayer = 1;
-
       currentRound++;
 
       document.getElementById("roundText").innerText =
         `ROUND ${currentRound} / ${MAX_ROUND}`;
-
     }
 
     const currentPlayerText =
@@ -599,12 +738,10 @@ form.addEventListener("submit", async (e) => {
 
     currentPlayerText.classList.add("turn-active");
 
-updateCurrentPlayerName();
+    updateCurrentPlayerName();
 
     if (currentRound > MAX_ROUND) {
-
       finishGame();
-
     }
 
   }
@@ -621,9 +758,7 @@ updateCurrentPlayerName();
   }
 
   startButton.disabled = false;
-
-  startButton.innerText =
-    "START ANALYSIS";
+  startButton.innerText = "START ANALYSIS";
 
 });
 
