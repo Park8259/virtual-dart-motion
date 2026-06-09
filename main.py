@@ -13,6 +13,7 @@ from src.front_camera import apply_front_camera_direction
 from src.object_tracker import track_object, correct_release_from_object_track, COLOR_RANGES
 from src.pixel_targets import evaluate_pixel_targets
 from src.trajectory import predict
+from src.trajectory_quality import evaluate_trajectory_quality
 from src.simulate_board import read_hit_position, render_board
 from src.render_analysis_preview import (
     render_grid_trajectory,
@@ -108,6 +109,7 @@ def write_latest_result(
     pixel_target_csv,
     analysis_preview,
     grid_trajectory_png,
+    trajectory_quality,
 ):
 
     if not pixel_target_csv.exists():
@@ -193,6 +195,8 @@ def write_latest_result(
 
         "pixel_target_csv":
             f"/output/{run_name}/{pixel_target_csv.name}",
+
+        **trajectory_quality,
     }
 
     latest_result_path = Path("output") / "latest_result.json"
@@ -216,6 +220,8 @@ def write_latest_result(
     print(f"Latest result saved: {latest_result_path}")
     print(f"Target: {target}")
     print(f"Endpoint px: ({endpoint_x_px}, {endpoint_y_px})")
+    print(f"Trajectory valid: {trajectory_quality['trajectory_valid']}")
+    print(f"Trajectory quality: {trajectory_quality['trajectory_quality_reason']}")
 
     return latest_result
 
@@ -634,7 +640,14 @@ def run_analysis(
         screen_endpoint_x=screen_endpoint_x,
     )
 
-    print("\n4. 가상 보드 결과 이미지 생성 중...")
+    print("\n4. 궤적 유효성 검사 중...")
+    trajectory_quality = evaluate_trajectory_quality(
+        trajectory_csv=trajectory_csv,
+        expected_endpoint_x=screen_endpoint_x,
+    )
+    print(trajectory_quality["trajectory_quality_message"])
+
+    print("\n5. 가상 보드 결과 이미지 생성 중...")
     hit_x, hit_y = read_hit_position(
         trajectory_csv
     )
@@ -647,7 +660,7 @@ def run_analysis(
         output_png=board_png,
     )
 
-    print("\n5. 픽셀 과녁 결과 생성 중...")
+    print("\n6. 픽셀 과녁 결과 생성 중...")
     evaluate_pixel_targets(
         trajectory_csv=trajectory_csv,
         analysis_csv=analysis_csv,
@@ -659,7 +672,7 @@ def run_analysis(
         mirror_x=target_mirror_x,
     )
 
-    print("\n6. 분석 미리보기 영상 생성 중...")
+    print("\n7. 분석 미리보기 영상 생성 중...")
     render_preview(
         video_path=video_path,
         analysis_csv=analysis_csv,
@@ -670,7 +683,7 @@ def run_analysis(
         trajectory_y_offset_px=trajectory_y_offset_px,
     )
 
-    print("\n7. 1920x1080 격자 궤적 이미지 생성 중...")
+    print("\n8. 1920x1080 격자 궤적 이미지 생성 중...")
     render_grid_trajectory(
         trajectory_csv=trajectory_csv,
         output_image=grid_trajectory_png,
@@ -703,10 +716,14 @@ def run_analysis(
         pixel_target_csv=pixel_target_csv,
         analysis_preview=analysis_preview,
         grid_trajectory_png=grid_trajectory_png,
+        trajectory_quality=trajectory_quality,
     )
 
-    print("\n8. LED 결과 표시 중...")
-    run_once()
+    if trajectory_quality["trajectory_valid"]:
+        print("\n9. LED 결과 표시 중...")
+        run_once()
+    else:
+        print("\n9. 비정상 궤적이므로 LED 결과 표시를 건너뜁니다.")
 
 
 def main():
