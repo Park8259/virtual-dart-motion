@@ -11,25 +11,17 @@ else:
     GPIO_ERROR = None
 
 
-UP_LED = 17
-MID_LED = 27
-DOWN_LED = 22
-
 LATEST_RESULT_FILE = Path("output/latest_result.json")
 
 LIGHT_DURATION_SECONDS = 5
 
 
-TARGET_TO_ZONE = {
-    "top": "UP",
-    "center": "MID",
-    "bottom": "DOWN",
-
-    # 현재 하드웨어는 LED 3개만 사용하므로
-    # left/right는 임시로 center와 같은 MID에 매핑합니다.
-    # 추후 LED가 늘어나면 여기만 확장하면 됩니다.
-    "left": "MID",
-    "right": "MID",
+LED_PINS = {
+    "top": 17,
+    "left": 23,
+    "center": 27,
+    "right": 24,
+    "bottom": 22,
 }
 
 
@@ -40,11 +32,11 @@ def setup_gpio():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
 
-    GPIO.setup(UP_LED, GPIO.OUT)
-    GPIO.setup(MID_LED, GPIO.OUT)
-    GPIO.setup(DOWN_LED, GPIO.OUT)
+    for pin in LED_PINS.values():
+        GPIO.setup(pin, GPIO.OUT)
 
     clear_leds()
+
     return True
 
 
@@ -52,9 +44,8 @@ def clear_leds():
     if GPIO is None:
         return
 
-    GPIO.output(UP_LED, GPIO.LOW)
-    GPIO.output(MID_LED, GPIO.LOW)
-    GPIO.output(DOWN_LED, GPIO.LOW)
+    for pin in LED_PINS.values():
+        GPIO.output(pin, GPIO.LOW)
 
 
 def load_latest_result(result_path=LATEST_RESULT_FILE):
@@ -73,39 +64,59 @@ def normalize_target(target):
     if target is None:
         return "miss"
 
-    return str(target).strip().lower()
+    normalized = str(target).strip().lower()
+
+    if normalized in LED_PINS:
+        return normalized
+
+    return "miss"
 
 
-def target_to_zone(target):
+def safe_bool(value):
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        return False
+
+    if isinstance(value, str):
+        return value.strip().lower() in {
+            "true",
+            "1",
+            "yes",
+            "y",
+            "hit",
+        }
+
+    return bool(value)
+
+
+def target_to_pin(target):
     normalized_target = normalize_target(target)
 
-    return TARGET_TO_ZONE.get(
-        normalized_target,
-        "MISS"
-    )
+    return LED_PINS.get(normalized_target)
 
 
-def light_zone(zone):
+def light_target(target, hit):
     if GPIO is None:
         print(f"[LED skipped] RPi.GPIO is not available: {GPIO_ERROR}")
-        return
+        return None
 
     clear_leds()
 
-    if zone == "UP":
-        GPIO.output(UP_LED, GPIO.HIGH)
+    if not hit:
+        return None
 
-    elif zone == "MID":
-        GPIO.output(MID_LED, GPIO.HIGH)
+    normalized_target = normalize_target(target)
 
-    elif zone == "DOWN":
-        GPIO.output(DOWN_LED, GPIO.HIGH)
+    pin = target_to_pin(normalized_target)
 
-    elif zone == "MISS":
-        clear_leds()
+    if pin is None:
+        return None
 
-    else:
-        clear_leds()
+    GPIO.output(pin, GPIO.HIGH)
+
+    return pin
 
 
 def process_hit(result_path=LATEST_RESULT_FILE):
@@ -115,28 +126,35 @@ def process_hit(result_path=LATEST_RESULT_FILE):
         result.get("target")
     )
 
-    zone = target_to_zone(target)
+    hit = safe_bool(
+        result.get("hit")
+    )
 
-    hit = result.get("hit")
     endpoint_x_px = result.get("endpoint_x_px")
     endpoint_y_px = result.get("endpoint_y_px")
     distance_px = result.get("distance_px")
     video_name = result.get("video_name")
 
-    light_zone(zone)
+    active_pin = light_target(
+        target=target,
+        hit=hit
+    )
+
+    led_target = target if hit and active_pin is not None else "miss"
 
     print("\n====================")
     print("LED RESULT")
     print("====================")
     print(f"Video       : {video_name}")
-    print(f"Target      : {target}")
-    print(f"Zone        : {zone}")
     print(f"Hit         : {hit}")
+    print(f"Target      : {target}")
+    print(f"LED Target  : {led_target}")
+    print(f"GPIO Pin    : {active_pin}")
     print(f"Endpoint X  : {endpoint_x_px}")
     print(f"Endpoint Y  : {endpoint_y_px}")
     print(f"Distance px : {distance_px}")
 
-    return zone
+    return led_target
 
 
 def cleanup():
@@ -155,12 +173,12 @@ def run_once(
     try:
         gpio_ready = setup_gpio()
 
-        zone = process_hit(result_path)
+        led_target = process_hit(result_path)
 
         if gpio_ready:
             time.sleep(duration)
 
-        return zone
+        return led_target
 
     finally:
         if cleanup_after:
