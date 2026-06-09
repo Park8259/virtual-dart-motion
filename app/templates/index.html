@@ -170,14 +170,21 @@
 
     .analysis-progress {
       margin-top: auto;
+      min-height: 64px;
+      box-sizing: border-box;
       padding: 12px 14px;
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.2s ease;
       border-radius: 10px;
       background: rgba(17, 24, 39, 0.9);
       border: 1px solid #1f2a44;
     }
 
     .analysis-progress.hidden {
-      display: none;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
     }
 
     .progress-header {
