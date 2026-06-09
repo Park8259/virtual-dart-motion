@@ -1114,6 +1114,30 @@ function evaluateWebTarget(endpointXPx, endpointYPx) {
 
 }
 
+async function publishWebLedResult(data, webResult) {
+
+  const response = await fetch("/web-led-result", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      hit: webResult.hit,
+      target: webResult.target,
+      video_name: data.video_name,
+      endpoint_x_px: data.endpoint_x_px,
+      endpoint_y_px: data.endpoint_y_px,
+      distance_px: webResult.distancePx
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "웹 판정 결과를 LED로 전송하지 못했습니다.");
+  }
+
+  return response.json();
+
+}
+
 function showMessagePopup(title, message) {
 
   document.getElementById("messageTitle").innerText =
@@ -1775,9 +1799,11 @@ form.addEventListener("submit", async (e) => {
       data.endpoint_y_px
     );
 
-    // HIT and nearest target follow the rendered web target rectangles.
+    // Publish the web verdict first so a blue target always means its LED command succeeded.
     const hit =
       webResult.hit;
+
+    await publishWebLedResult(data, webResult);
 
     if (hit) {
       activateTarget(target);

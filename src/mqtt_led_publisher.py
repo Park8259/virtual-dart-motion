@@ -101,27 +101,13 @@ def build_payload(
     return payload
 
 
-def publish_led_result(
-    result_path=LATEST_RESULT_FILE,
+def publish_payload(
+    payload,
     broker_host=MQTT_BROKER_HOST,
     broker_port=MQTT_BROKER_PORT,
     topic=MQTT_TOPIC,
-    duration=DEFAULT_DURATION_SECONDS,
 ):
-    result = load_latest_result(
-        result_path
-    )
-
-    payload = build_payload(
-        result=result,
-        duration=duration,
-    )
-
-    payload_text = json.dumps(
-        payload,
-        ensure_ascii=False,
-    )
-
+    payload_text = json.dumps(payload, ensure_ascii=False)
     client = mqtt.Client()
 
     print("\n====================")
@@ -131,26 +117,30 @@ def publish_led_result(
     print(f"Topic  : {topic}")
     print(f"Payload: {payload_text}")
 
-    client.connect(
-        broker_host,
-        broker_port,
-        keepalive=30,
-    )
-
-    publish_result = client.publish(
-        topic,
-        payload_text,
-        qos=0,
-        retain=False,
-    )
-
+    client.connect(broker_host, broker_port, keepalive=30)
+    publish_result = client.publish(topic, payload_text, qos=1, retain=False)
     publish_result.wait_for_publish()
-
     client.disconnect()
 
     print("MQTT publish complete")
-
     return payload
+
+
+def publish_led_result(
+    result_path=LATEST_RESULT_FILE,
+    broker_host=MQTT_BROKER_HOST,
+    broker_port=MQTT_BROKER_PORT,
+    topic=MQTT_TOPIC,
+    duration=DEFAULT_DURATION_SECONDS,
+):
+    result = load_latest_result(result_path)
+    payload = build_payload(result=result, duration=duration)
+    return publish_payload(
+        payload=payload,
+        broker_host=broker_host,
+        broker_port=broker_port,
+        topic=topic,
+    )
 
 
 def main():

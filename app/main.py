@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 import time
@@ -11,6 +12,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
+
+from src.mqtt_led_publisher import publish_payload, normalize_target
 
 
 app = FastAPI()
@@ -201,6 +204,34 @@ def get_int_value(data, key, default_value):
         return int(default_value)
 
 
+@app.post("/web-led-result")
+async def web_led_result(request: Request):
+    data = await read_request_json(request)
+    hit = data.get("hit") is True
+    target = normalize_target(data.get("target"))
+
+    if hit and target == "miss":
+        raise HTTPException(status_code=400, detail="Invalid web target")
+
+    payload = {
+        "hit": hit,
+        "target": target if hit else "miss",
+        "duration": 5,
+        "video_name": data.get("video_name"),
+        "endpoint_x_px": data.get("endpoint_x_px"),
+        "endpoint_y_px": data.get("endpoint_y_px"),
+        "distance_px": data.get("distance_px"),
+        "mode": "web_target",
+    }
+
+    try:
+        publish_payload(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"MQTT publish failed: {exc}") from exc
+
+    return {"success": True, **payload}
+
+
 @app.post("/analyze")
 async def analyze_video(request: Request):
 
@@ -247,10 +278,14 @@ async def analyze_video(request: Request):
             str(front_horizontal_gain),
         ]
 
+        analysis_env = os.environ.copy()
+        analysis_env["AIRSHOT_WEB_CONTROLS_MQTT"] = "1"
+
         result = subprocess.run(
             command,
             capture_output=True,
-            text=True
+            text=True,
+            env=analysis_env
         )
 
         if result.stdout:

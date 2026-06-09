@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -735,7 +736,9 @@ def run_analysis(
         trajectory_quality=trajectory_quality,
     )
 
-    if trajectory_quality["trajectory_valid"]:
+    mqtt_enabled = os.environ.get("AIRSHOT_WEB_CONTROLS_MQTT") != "1"
+
+    if trajectory_quality["trajectory_valid"] and mqtt_enabled:
         print("\n9. MQTT LED 결과 전송 중...")
 
         try:
@@ -747,8 +750,10 @@ def run_analysis(
                 file=sys.stderr
             )
 
-    else:
+    elif not trajectory_quality["trajectory_valid"]:
         print("\n9. 비정상 궤적이므로 MQTT LED 결과 전송을 건너뜁니다.")
+    else:
+        print("\n9. 웹 UI 판정을 사용하므로 기존 MQTT 전송을 건너뜁니다.")
 
 
 def main():
