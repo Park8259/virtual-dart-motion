@@ -66,7 +66,33 @@
         0 0 18px rgba(78, 161, 255, 0.65);
     }
 
-    .settings-modal {
+    .preview-button {
+      position: fixed;
+      top: 20px;
+      right: 78px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid #1f2a44;
+      background: rgba(17, 24, 39, 0.95);
+      color: #7ec8ff;
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px rgba(78, 161, 255, 0.35);
+    }
+
+    .preview-button:hover {
+      background: rgba(31, 124, 255, 0.25);
+      box-shadow: 0 0 18px rgba(78, 161, 255, 0.65);
+    }
+
+    .settings-modal,
+    .preview-modal,
+    .message-modal {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.55);
@@ -76,8 +102,109 @@
       z-index: 999;
     }
 
-    .settings-modal.hidden {
+    .settings-modal.hidden,
+    .preview-modal.hidden,
+    .message-modal.hidden {
       display: none;
+    }
+
+    .preview-modal {
+      z-index: 2000;
+    }
+
+    .message-modal {
+      z-index: 4000;
+    }
+
+    .preview-panel {
+      width: min(1100px, calc(100vw - 48px));
+      padding: 18px;
+      border-radius: 18px;
+      background: #0a101d;
+      border: 1px solid #1f2a44;
+      box-shadow: 0 0 32px rgba(0, 140, 255, 0.32);
+      position: relative;
+    }
+
+    .preview-panel h2 {
+      margin: 0 50px 14px 0;
+      color: #7ec8ff;
+    }
+
+    .preview-stream {
+      display: block;
+      width: 100%;
+      max-height: calc(100vh - 190px);
+      aspect-ratio: 16 / 9;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #02040b;
+      border: 1px solid #1f2a44;
+    }
+
+    .message-panel {
+      width: min(460px, calc(100vw - 48px));
+      padding: 28px;
+      border-radius: 18px;
+      background: #0a101d;
+      border: 2px solid #ff5555;
+      box-shadow: 0 0 34px rgba(255, 68, 68, 0.45);
+      text-align: center;
+    }
+
+    .message-panel h2 {
+      margin: 0 0 12px;
+      color: #ff6666;
+      font-size: 26px;
+    }
+
+    .message-panel p {
+      margin: 0 0 18px;
+      color: #f3f4f6;
+      line-height: 1.55;
+      white-space: pre-line;
+      max-height: 50vh;
+      overflow-y: auto;
+      word-break: break-word;
+    }
+
+    .analysis-progress {
+      margin-top: auto;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid #1f2a44;
+    }
+
+    .analysis-progress.hidden {
+      display: none;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: #9ecfff;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      overflow: hidden;
+      border-radius: 6px;
+      background: #02040b;
+      border: 1px solid #1f2a44;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #1f7cff, #00e5ff);
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.65);
+      transition: width 0.5s ease;
     }
 
     .settings-panel {
@@ -197,16 +324,10 @@
       box-shadow:
         0 0 16px rgba(0, 140, 255, 0.14),
         inset 0 0 28px rgba(78, 161, 255, 0.06);
-      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      position: relative;
-    }
-
-    .brand-logo-box::before {
-      content: none;
     }
 
     .brand-logo-frame {
@@ -216,13 +337,9 @@
       border: 2px solid rgba(190, 231, 255, 0.72);
       background: #ffffff;
       box-shadow:
-        0 0 0 1px rgba(22, 43, 72, 0.85),
         0 10px 28px rgba(0, 0, 0, 0.38),
-        0 0 18px rgba(78, 161, 255, 0.32),
-        0 0 30px rgba(48, 217, 219, 0.14);
+        0 0 18px rgba(78, 161, 255, 0.32);
       overflow: hidden;
-      position: relative;
-      z-index: 1;
     }
 
     .brand-logo {
@@ -232,120 +349,59 @@
       transform: translateY(-10px);
     }
 
-    .brand-logo-box::after {
-      content: none;
-    }
-
-    .dashboard > div {
+    .preview-box {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow:
+        0 0 14px rgba(0, 140, 255, 0.10);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       min-height: 0;
     }
 
-    .log-popup {
-      position: fixed;
-      left: 50%;
-      top: 24px;
-      transform: translate(-50%, -12px);
-      z-index: 2600;
-      width: min(520px, calc(100vw - 32px));
-      padding: 16px 48px 16px 18px;
-      border-radius: 14px;
+    .preview-box h3 {
+      margin: 0 0 10px 0;
+      color: #9ecfff;
+      font-size: 15px;
+    }
+
+    .preview-video {
+      width: 100%;
+      max-height: 260px;
+      border-radius: 12px;
+      background: #02040b;
+      border: 1px solid #1f2a44;
       display: none;
-      opacity: 0;
-      color: #dff7ff;
-      background:
-        linear-gradient(
-          180deg,
-          rgba(13, 22, 40, 0.98),
-          rgba(6, 11, 22, 0.98)
-        );
-      border: 1px solid rgba(126, 200, 255, 0.28);
-      box-shadow:
-        0 14px 34px rgba(0, 0, 0, 0.38),
-        0 0 24px rgba(78, 161, 255, 0.22),
-        inset 0 0 22px rgba(78, 161, 255, 0.06);
-      pointer-events: auto;
+      object-fit: contain;
     }
 
-    .log-popup.show {
-      display: block;
-      animation: logPopupIn 0.18s ease-out forwards;
-    }
-
-    .log-popup.info {
-      border-color: rgba(126, 200, 255, 0.34);
-    }
-
-    .log-popup.success {
-      color: #dfffea;
-      border-color: rgba(82, 255, 143, 0.42);
-      box-shadow:
-        0 14px 34px rgba(0, 0, 0, 0.38),
-        0 0 24px rgba(82, 255, 143, 0.24),
-        inset 0 0 22px rgba(82, 255, 143, 0.07);
-    }
-
-    .log-popup.error {
-      color: #ffe7e7;
-      border-color: rgba(255, 88, 88, 0.56);
-      box-shadow:
-        0 14px 34px rgba(0, 0, 0, 0.42),
-        0 0 26px rgba(255, 68, 68, 0.28),
-        inset 0 0 22px rgba(255, 68, 68, 0.08);
-    }
-
-    .log-popup-title {
-      margin-bottom: 6px;
-      color: #7ec8ff;
+    .preview-placeholder {
+      flex: 1;
+      min-height: 150px;
+      border-radius: 12px;
+      border: 1px dashed #1f2a44;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       font-size: 13px;
-      font-weight: bold;
-      letter-spacing: 0.5px;
+      line-height: 1.4;
+      padding: 12px;
+      box-sizing: border-box;
+      background: rgba(2, 4, 11, 0.45);
     }
 
-    .log-popup.success .log-popup-title {
-      color: #52ff8f;
-    }
-
-    .log-popup.error .log-popup-title {
-      color: #ff6b6b;
-    }
-
-    .log-popup-message {
-      font-size: 14px;
-      font-weight: bold;
+    .preview-caption {
+      margin-top: 10px;
+      color: #9ca3af;
+      font-size: 12px;
       line-height: 1.35;
-      white-space: pre-wrap;
       word-break: break-word;
-      max-height: 110px;
-      overflow-y: auto;
-    }
-
-    .log-popup-close {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 28px;
-      height: 28px;
-      margin: 0;
-      padding: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #dff7ff;
-      font-size: 18px;
-      line-height: 1;
-      box-shadow: none;
-    }
-
-    .log-popup-close:hover {
-      transform: none;
-      box-shadow: 0 0 12px rgba(126, 200, 255, 0.34);
-    }
-
-    @keyframes logPopupIn {
-      100% {
-        opacity: 1;
-        transform: translate(-50%, 0);
-      }
     }
 
     .hidden-status {
@@ -440,12 +496,66 @@
 <body>
 
 <button
+  id="previewButton"
+  class="preview-button"
+  type="button"
+  title="Latest Throw Video">
+  ▶
+</button>
+
+<button
   id="settingsButton"
   class="settings-button"
   type="button"
   title="Calibration Settings">
   ⚙
 </button>
+
+<div
+  id="previewModal"
+  class="preview-modal hidden">
+
+  <div class="preview-panel">
+
+    <button
+      id="closePreviewButton"
+      class="settings-close-button"
+      type="button">
+      ×
+    </button>
+
+    <h2>Latest Throw Trajectory</h2>
+
+    <img
+      id="previewStream"
+      class="preview-stream"
+      alt="Latest throw trajectory preview">
+
+    <div
+      id="popupPreviewCaption"
+      class="preview-caption">
+      NO PREVIEW
+    </div>
+
+  </div>
+
+</div>
+
+<div
+  id="messageModal"
+  class="message-modal hidden">
+
+  <div class="message-panel">
+    <h2 id="messageTitle">ERROR</h2>
+    <p id="messageText"></p>
+    <button
+      id="closeMessageButton"
+      type="button">
+      확인
+    </button>
+  </div>
+
+</div>
 
 <div
   id="throwResultPopup"
@@ -459,33 +569,6 @@
   <div
     id="throwResultSub"
     class="throw-result-sub">
-  </div>
-
-</div>
-
-<div
-  id="logPopup"
-  class="log-popup info"
-  role="status"
-  aria-live="polite">
-
-  <button
-    id="logPopupClose"
-    class="log-popup-close"
-    type="button"
-    title="Close log popup">
-    ×
-  </button>
-
-  <div
-    id="logPopupTitle"
-    class="log-popup-title">
-    SYSTEM LOG
-  </div>
-
-  <div
-    id="logPopupMessage"
-    class="log-popup-message">
   </div>
 
 </div>
@@ -586,6 +669,8 @@
               START ANALYSIS
             </button>
           </form>
+
+          <div id="loading"></div>
         </div>
 
         <button
@@ -662,6 +747,21 @@
 
         </div>
 
+        <div
+          id="analysisProgress"
+          class="analysis-progress hidden">
+          <div class="progress-header">
+            <span id="progressStage">분석 준비 중</span>
+            <span id="progressText">0% / 예상 남은 시간 계산 중</span>
+          </div>
+          <div class="progress-track">
+            <div
+              id="progressFill"
+              class="progress-fill">
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -733,6 +833,12 @@ const SCREEN_HEIGHT = 1080;
 let gameEnded = false;
 
 let throwResultPopupTimer = null;
+let latestPreviewRunName = null;
+let latestPreviewVideoName = null;
+let analysisProgressTimer = null;
+let analysisStartedAt = null;
+
+const ESTIMATED_ANALYSIS_SECONDS = 90;
 
 let playerScores = {
   1: 0,
@@ -755,6 +861,105 @@ function clearEndpointMarker() {
     document.getElementById("endpointMarker");
 
   marker.style.display = "none";
+
+}
+
+function progressStageFromPercent(percent) {
+
+  if (percent < 18) {
+    return "카메라 영상 준비 중";
+  }
+
+  if (percent < 48) {
+    return "자세 및 손가락 좌표 분석 중";
+  }
+
+  if (percent < 72) {
+    return "릴리즈와 궤적 계산 중";
+  }
+
+  if (percent < 92) {
+    return "과녁 판정 및 영상 생성 중";
+  }
+
+  return "결과 정리 중";
+
+}
+
+function updateAnalysisProgress(percent, remainingSeconds) {
+
+  const normalizedPercent =
+    Math.max(0, Math.min(100, Math.round(percent)));
+
+  document.getElementById("progressFill").style.width =
+    `${normalizedPercent}%`;
+
+  document.getElementById("progressStage").innerText =
+    progressStageFromPercent(normalizedPercent);
+
+  const remainingText =
+    normalizedPercent >= 100
+      ? "완료"
+      : `예상 ${Math.max(0, Math.ceil(remainingSeconds))}초 남음`;
+
+  document.getElementById("progressText").innerText =
+    `${normalizedPercent}% / ${remainingText}`;
+
+}
+
+function startAnalysisProgress() {
+
+  if (analysisProgressTimer) {
+    clearInterval(analysisProgressTimer);
+  }
+
+  analysisStartedAt = Date.now();
+
+  document
+    .getElementById("analysisProgress")
+    .classList
+    .remove("hidden");
+
+  updateAnalysisProgress(1, ESTIMATED_ANALYSIS_SECONDS);
+
+  analysisProgressTimer =
+    setInterval(() => {
+
+      const elapsedSeconds =
+        (Date.now() - analysisStartedAt) / 1000;
+
+      const ratio =
+        Math.min(
+          0.95,
+          elapsedSeconds / ESTIMATED_ANALYSIS_SECONDS
+        );
+
+      updateAnalysisProgress(
+        ratio * 100,
+        ESTIMATED_ANALYSIS_SECONDS - elapsedSeconds
+      );
+
+    }, 1000);
+
+}
+
+function finishAnalysisProgress(success = true) {
+
+  if (analysisProgressTimer) {
+    clearInterval(analysisProgressTimer);
+    analysisProgressTimer = null;
+  }
+
+  if (success) {
+    updateAnalysisProgress(100, 0);
+  }
+
+  setTimeout(() => {
+    document
+      .getElementById("analysisProgress")
+      .classList
+      .add("hidden");
+  }, success ? 1800 : 0);
 
 }
 
@@ -854,6 +1059,87 @@ function isHitResult(data) {
   }
 
   return false;
+
+}
+
+function getVisualTargetAtEndpoint() {
+
+  const marker =
+    document.getElementById("endpointMarker");
+
+  if (marker.style.display === "none") {
+    return null;
+  }
+
+  const markerRect =
+    marker.getBoundingClientRect();
+
+  const markerX =
+    markerRect.left + markerRect.width / 2;
+
+  const markerY =
+    markerRect.top + markerRect.height / 2;
+
+  const targetNames = [
+    "top",
+    "left",
+    "center",
+    "right",
+    "bottom"
+  ];
+
+  for (const targetName of targetNames) {
+
+    const selected =
+      document.getElementById(`target-${targetName}`);
+
+    const targetRect =
+      selected.getBoundingClientRect();
+
+    const targetX =
+      targetRect.left + targetRect.width / 2;
+
+    const targetY =
+      targetRect.top + targetRect.height / 2;
+
+    const radius =
+      Math.min(targetRect.width, targetRect.height) / 2;
+
+    if (
+      Math.hypot(
+        markerX - targetX,
+        markerY - targetY
+      ) <= radius
+    ) {
+      return targetName;
+    }
+
+  }
+
+  return null;
+}
+
+function showMessagePopup(title, message) {
+
+  document.getElementById("messageTitle").innerText =
+    title;
+
+  document.getElementById("messageText").innerText =
+    message;
+
+  document
+    .getElementById("messageModal")
+    .classList
+    .remove("hidden");
+
+}
+
+function closeMessagePopup() {
+
+  document
+    .getElementById("messageModal")
+    .classList
+    .add("hidden");
 
 }
 
@@ -1067,185 +1353,88 @@ function finishGame() {
 
 function resetPreviewVideo() {
 
-  const previewVideo =
-    document.getElementById("previewVideo");
+  latestPreviewRunName = null;
+  latestPreviewVideoName = null;
 
-  const previewSource =
-    document.getElementById("previewVideoSource");
-
-  const placeholder =
-    document.getElementById("previewPlaceholder");
-
-  const caption =
-    document.getElementById("previewCaption");
-
-  if (!previewVideo || !previewSource || !placeholder || !caption) {
-    return;
-  }
-
-  previewVideo.pause();
-
-  previewSource.src =
-    "";
-
-  previewVideo.load();
-
-  previewVideo.style.display =
-    "none";
-
-  placeholder.style.display =
-    "flex";
-
-  caption.innerText =
+  document.getElementById("previewStream").removeAttribute("src");
+  document.getElementById("popupPreviewCaption").innerText =
     "NO PREVIEW";
+
+  closePreviewModal();
 
 }
 
-function updatePreviewVideo(previewVideoPath, videoName) {
+function updatePreviewVideo(runName, videoName) {
 
-  const previewVideo =
-    document.getElementById("previewVideo");
-
-  const previewSource =
-    document.getElementById("previewVideoSource");
-
-  const placeholder =
-    document.getElementById("previewPlaceholder");
-
-  const caption =
-    document.getElementById("previewCaption");
-
-  if (!previewVideo || !previewSource || !placeholder || !caption) {
-    return;
-  }
-
-  if (!previewVideoPath) {
-
-    previewVideo.style.display =
-      "none";
-
-    placeholder.style.display =
-      "flex";
-
-    caption.innerText =
-      "NO PREVIEW VIDEO";
-
-    return;
-
-  }
-
-  const cacheBustedPath =
-    `${previewVideoPath}?t=${Date.now()}`;
-
-  previewSource.src =
-    cacheBustedPath;
-
-  previewVideo.load();
-
-  previewVideo.style.display =
-    "block";
-
-  placeholder.style.display =
-    "none";
-
-  caption.innerText =
-    videoName
-      ? `Preview: ${videoName}`
-      : "Preview loaded";
+  latestPreviewRunName = runName || null;
+  latestPreviewVideoName = videoName || null;
 
 }
 
 function setPreviewLoading() {
 
-  const placeholder =
-    document.getElementById("previewPlaceholder");
-
-  const caption =
-    document.getElementById("previewCaption");
-
-  if (!placeholder || !caption) {
-    return;
-  }
-
-  placeholder.style.display =
-    "flex";
-
-  placeholder.innerHTML =
-    "분석 중입니다.<br>완료 후 최신 preview 영상이 표시됩니다.";
-
-  caption.innerText =
-    "ANALYZING...";
+  closePreviewModal();
 
 }
 
-function setPreviewCaption(text) {
+async function openPreviewModal() {
 
-  const caption =
-    document.getElementById("previewCaption");
+  if (!latestPreviewRunName) {
 
-  if (!caption) {
-    return;
-  }
+    try {
 
-  caption.innerText =
-    text;
+      const response =
+        await fetch("/latest-result");
 
-}
+      if (response.ok) {
+        const latestResult = await response.json();
+        updatePreviewVideo(
+          latestResult.run_name,
+          latestResult.video_name
+        );
+      }
 
-let logPopupTimer = null;
+    }
+    catch (error) {
+      console.error(error);
+    }
 
-function hideLogPopup() {
-
-  const popup =
-    document.getElementById("logPopup");
-
-  if (logPopupTimer) {
-    clearTimeout(logPopupTimer);
-    logPopupTimer = null;
-  }
-
-  popup.classList.remove("show");
-
-}
-
-function showLogPopup(message, type = "info", autoHideMs = 0) {
-
-  const popup =
-    document.getElementById("logPopup");
-
-  const title =
-    document.getElementById("logPopupTitle");
-
-  const messageBox =
-    document.getElementById("logPopupMessage");
-
-  if (logPopupTimer) {
-    clearTimeout(logPopupTimer);
-    logPopupTimer = null;
-  }
-
-  popup.classList.remove("info", "success", "error");
-  popup.classList.add(type);
-
-  title.innerText =
-    type === "error"
-      ? "ERROR LOG"
-      : type === "success"
-        ? "COMPLETE"
-        : "SYSTEM LOG";
-
-  messageBox.innerText =
-    message || "";
-
-  popup.classList.add("show");
-
-  if (autoHideMs > 0) {
-    logPopupTimer =
-      setTimeout(
-        hideLogPopup,
-        autoHideMs
+    if (!latestPreviewRunName) {
+      showMessagePopup(
+        "영상 없음",
+        "분석을 완료한 뒤 궤적 영상을 확인할 수 있습니다."
       );
+      return;
+    }
+
   }
+
+  const stream =
+    document.getElementById("previewStream");
+
+  stream.src =
+    `/preview/${encodeURIComponent(latestPreviewRunName)}?t=${Date.now()}`;
+
+  document.getElementById("popupPreviewCaption").innerText =
+    latestPreviewVideoName
+      ? `Preview: ${latestPreviewVideoName}`
+      : "Latest trajectory preview";
+
+  document
+    .getElementById("previewModal")
+    .classList
+    .remove("hidden");
+
+}
+
+function closePreviewModal() {
+
+  document
+    .getElementById("previewModal")
+    .classList
+    .add("hidden");
+
+  document.getElementById("previewStream").removeAttribute("src");
 
 }
 
@@ -1281,12 +1470,14 @@ function resetGame() {
   document.getElementById("videoText").innerText =
     "WAITING";
 
-  hideLogPopup();
+  document.getElementById("loading").innerText =
+    "";
 
   clearTargetHighlight();
   clearEndpointMarker();
   clearThrowResultPopup();
   resetPreviewVideo();
+  finishAnalysisProgress(false);
 
 }
 
@@ -1355,6 +1546,27 @@ document
   );
 
 document
+  .getElementById("previewButton")
+  .addEventListener(
+    "click",
+    openPreviewModal
+  );
+
+document
+  .getElementById("closePreviewButton")
+  .addEventListener(
+    "click",
+    closePreviewModal
+  );
+
+document
+  .getElementById("closeMessageButton")
+  .addEventListener(
+    "click",
+    closeMessagePopup
+  );
+
+document
   .getElementById("closeSettingsButton")
   .addEventListener(
     "click",
@@ -1380,10 +1592,25 @@ document
   );
 
 document
-  .getElementById("logPopupClose")
+  .getElementById("previewModal")
   .addEventListener(
     "click",
-    hideLogPopup
+    (event) => {
+      if (event.target.id === "previewModal") {
+        closePreviewModal();
+      }
+    }
+  );
+
+document
+  .getElementById("messageModal")
+  .addEventListener(
+    "click",
+    (event) => {
+      if (event.target.id === "messageModal") {
+        closeMessagePopup();
+      }
+    }
   );
 
 document
@@ -1408,7 +1635,10 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   if (gameEnded) {
-    alert("게임이 종료되었습니다.");
+    showMessagePopup(
+      "게임 종료",
+      "게임이 종료되었습니다. RESET GAME을 눌러 다시 시작하세요."
+    );
     return;
   }
 
@@ -1422,6 +1652,7 @@ form.addEventListener("submit", async (e) => {
   clearEndpointMarker();
   clearThrowResultPopup();
   setPreviewLoading();
+  startAnalysisProgress();
 
   const p1 =
     document.getElementById("player1Name").value.trim();
@@ -1438,10 +1669,8 @@ form.addEventListener("submit", async (e) => {
   const calibrationValues =
     getCalibrationValues();
 
-  showLogPopup(
-    "DOUBLE CAMERA RECORDING...",
-    "info"
-  );
+  document.getElementById("loading").innerText =
+    "DOUBLE CAMERA RECORDING...";
 
   document.getElementById("statusText").innerText =
     "CAPTURING SIDE / FRONT VIDEO";
@@ -1465,15 +1694,18 @@ form.addEventListener("submit", async (e) => {
 
     if (!data.success) {
 
+      finishAnalysisProgress(false);
+
       document.getElementById("statusText").innerText =
         "ERROR";
 
-      showLogPopup(
-        data.error || "UNKNOWN ERROR",
-        "error"
-      );
+      document.getElementById("loading").innerText =
+        "";
 
-      setPreviewCaption("ANALYSIS FAILED");
+      showMessagePopup(
+        "분석 오류",
+        data.error || "알 수 없는 오류가 발생했습니다."
+      );
 
       startButton.disabled = false;
       startButton.innerText = "START ANALYSIS";
@@ -1482,7 +1714,14 @@ form.addEventListener("submit", async (e) => {
 
     }
 
+    updatePreviewVideo(
+      data.run_name,
+      data.video_name
+    );
+
     if (data.retry_required || data.trajectory_valid === false) {
+
+      finishAnalysisProgress(true);
 
       clearTargetHighlight();
       clearEndpointMarker();
@@ -1497,9 +1736,16 @@ form.addEventListener("submit", async (e) => {
         data.trajectory_quality_message
         || "궤적이 정상적으로 형성되지 않았습니다. 다시 촬영하세요.";
 
-      showLogPopup(
-        "점수와 턴은 유지됩니다. START ANALYSIS를 눌러 다시 촬영하세요.",
-        "error"
+      document.getElementById("loading").innerText =
+        "";
+
+      showMessagePopup(
+        "재촬영 필요",
+        (
+          data.trajectory_quality_message
+          || "궤적이 정상적으로 형성되지 않았습니다."
+        )
+        + "\n점수와 턴은 유지됩니다. 다시 촬영하세요."
       );
 
       startButton.disabled = false;
@@ -1509,10 +1755,8 @@ form.addEventListener("submit", async (e) => {
 
     }
 
-    showLogPopup(
-      "AI ANALYZING MOTION...",
-      "info"
-    );
+    document.getElementById("loading").innerText =
+      "AI ANALYZING MOTION...";
 
     document.getElementById("statusText").innerText =
       "PROCESSING";
@@ -1520,14 +1764,27 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("videoText").innerText =
       data.video_name || "UNKNOWN VIDEO";
 
-    const target =
+    let target =
       data.target || getTargetFromLegacyHit(
         data.hit_x,
         data.hit_y
       );
 
+    showEndpointMarker(
+      data.endpoint_x_px,
+      data.endpoint_y_px
+    );
+
+    const visualTarget =
+      getVisualTargetAtEndpoint();
+
+    if (visualTarget) {
+      target = visualTarget;
+    }
+
     const hit =
-      isHitResult(data);
+      isHitResult(data)
+      || visualTarget !== null;
 
     if (hit) {
       activateTarget(target);
@@ -1535,16 +1792,6 @@ form.addEventListener("submit", async (e) => {
     else {
       clearTargetHighlight();
     }
-
-    showEndpointMarker(
-      data.endpoint_x_px,
-      data.endpoint_y_px
-    );
-
-    updatePreviewVideo(
-      data.preview_video,
-      data.video_name
-    );
 
     showThrowResultPopup(
       hit,
@@ -1595,11 +1842,10 @@ form.addEventListener("submit", async (e) => {
         ? "BOARD UPDATED"
         : "MISS";
 
-    showLogPopup(
-      "ANALYSIS COMPLETE",
-      "success",
-      2200
-    );
+    document.getElementById("loading").innerText =
+      "";
+
+    finishAnalysisProgress(true);
 
     if (currentPlayer === 1) {
       currentPlayer = 2;
@@ -1630,19 +1876,20 @@ form.addEventListener("submit", async (e) => {
   }
   catch (error) {
 
+    finishAnalysisProgress(false);
+
     console.error(error);
 
     document.getElementById("statusText").innerText =
       "SERVER ERROR";
 
-    showLogPopup(
-      error && error.message
-        ? `FAILED\n${error.message}`
-        : "FAILED",
-      "error"
-    );
+    document.getElementById("loading").innerText =
+      "";
 
-    setPreviewCaption("SERVER ERROR");
+    showMessagePopup(
+      "서버 오류",
+      error.message || "서버와 통신하는 중 오류가 발생했습니다."
+    );
 
   }
 
