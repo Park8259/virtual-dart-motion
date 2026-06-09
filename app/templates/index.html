@@ -183,7 +183,7 @@
     }
 
     .brand-logo-box {
-      margin-top: 12px;
+      margin-top: auto;
       padding: 12px;
       border-radius: 16px;
       background:
@@ -236,20 +236,116 @@
       content: none;
     }
 
-    #loading {
-      margin-top: auto;
-      max-height: 78px;
-      overflow-y: auto;
-      padding-top: 10px;
-      font-size: 13px;
-    }
-
-    #loading:empty {
-      padding-top: 0;
-    }
-
     .dashboard > div {
       min-height: 0;
+    }
+
+    .log-popup {
+      position: fixed;
+      left: 50%;
+      top: 24px;
+      transform: translate(-50%, -12px);
+      z-index: 2600;
+      width: min(520px, calc(100vw - 32px));
+      padding: 16px 48px 16px 18px;
+      border-radius: 14px;
+      display: none;
+      opacity: 0;
+      color: #dff7ff;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(13, 22, 40, 0.98),
+          rgba(6, 11, 22, 0.98)
+        );
+      border: 1px solid rgba(126, 200, 255, 0.28);
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.38),
+        0 0 24px rgba(78, 161, 255, 0.22),
+        inset 0 0 22px rgba(78, 161, 255, 0.06);
+      pointer-events: auto;
+    }
+
+    .log-popup.show {
+      display: block;
+      animation: logPopupIn 0.18s ease-out forwards;
+    }
+
+    .log-popup.info {
+      border-color: rgba(126, 200, 255, 0.34);
+    }
+
+    .log-popup.success {
+      color: #dfffea;
+      border-color: rgba(82, 255, 143, 0.42);
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.38),
+        0 0 24px rgba(82, 255, 143, 0.24),
+        inset 0 0 22px rgba(82, 255, 143, 0.07);
+    }
+
+    .log-popup.error {
+      color: #ffe7e7;
+      border-color: rgba(255, 88, 88, 0.56);
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.42),
+        0 0 26px rgba(255, 68, 68, 0.28),
+        inset 0 0 22px rgba(255, 68, 68, 0.08);
+    }
+
+    .log-popup-title {
+      margin-bottom: 6px;
+      color: #7ec8ff;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    .log-popup.success .log-popup-title {
+      color: #52ff8f;
+    }
+
+    .log-popup.error .log-popup-title {
+      color: #ff6b6b;
+    }
+
+    .log-popup-message {
+      font-size: 14px;
+      font-weight: bold;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 110px;
+      overflow-y: auto;
+    }
+
+    .log-popup-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 28px;
+      height: 28px;
+      margin: 0;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #dff7ff;
+      font-size: 18px;
+      line-height: 1;
+      box-shadow: none;
+    }
+
+    .log-popup-close:hover {
+      transform: none;
+      box-shadow: 0 0 12px rgba(126, 200, 255, 0.34);
+    }
+
+    @keyframes logPopupIn {
+      100% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
     }
 
     .hidden-status {
@@ -368,6 +464,33 @@
 </div>
 
 <div
+  id="logPopup"
+  class="log-popup info"
+  role="status"
+  aria-live="polite">
+
+  <button
+    id="logPopupClose"
+    class="log-popup-close"
+    type="button"
+    title="Close log popup">
+    ×
+  </button>
+
+  <div
+    id="logPopupTitle"
+    class="log-popup-title">
+    SYSTEM LOG
+  </div>
+
+  <div
+    id="logPopupMessage"
+    class="log-popup-message">
+  </div>
+
+</div>
+
+<div
   id="settingsModal"
   class="settings-modal hidden">
 
@@ -470,8 +593,6 @@
           onclick="resetGame()">
           RESET GAME
         </button>
-
-        <div id="loading"></div>
 
         <div
           class="brand-logo-box"
@@ -1071,6 +1192,63 @@ function setPreviewCaption(text) {
 
 }
 
+let logPopupTimer = null;
+
+function hideLogPopup() {
+
+  const popup =
+    document.getElementById("logPopup");
+
+  if (logPopupTimer) {
+    clearTimeout(logPopupTimer);
+    logPopupTimer = null;
+  }
+
+  popup.classList.remove("show");
+
+}
+
+function showLogPopup(message, type = "info", autoHideMs = 0) {
+
+  const popup =
+    document.getElementById("logPopup");
+
+  const title =
+    document.getElementById("logPopupTitle");
+
+  const messageBox =
+    document.getElementById("logPopupMessage");
+
+  if (logPopupTimer) {
+    clearTimeout(logPopupTimer);
+    logPopupTimer = null;
+  }
+
+  popup.classList.remove("info", "success", "error");
+  popup.classList.add(type);
+
+  title.innerText =
+    type === "error"
+      ? "ERROR LOG"
+      : type === "success"
+        ? "COMPLETE"
+        : "SYSTEM LOG";
+
+  messageBox.innerText =
+    message || "";
+
+  popup.classList.add("show");
+
+  if (autoHideMs > 0) {
+    logPopupTimer =
+      setTimeout(
+        hideLogPopup,
+        autoHideMs
+      );
+  }
+
+}
+
 function resetGame() {
 
   currentPlayer = 1;
@@ -1103,8 +1281,7 @@ function resetGame() {
   document.getElementById("videoText").innerText =
     "WAITING";
 
-  document.getElementById("loading").innerText =
-    "";
+  hideLogPopup();
 
   clearTargetHighlight();
   clearEndpointMarker();
@@ -1203,6 +1380,13 @@ document
   );
 
 document
+  .getElementById("logPopupClose")
+  .addEventListener(
+    "click",
+    hideLogPopup
+  );
+
+document
   .getElementById("player1Name")
   .addEventListener(
     "input",
@@ -1254,8 +1438,10 @@ form.addEventListener("submit", async (e) => {
   const calibrationValues =
     getCalibrationValues();
 
-  document.getElementById("loading").innerText =
-    "DOUBLE CAMERA RECORDING...";
+  showLogPopup(
+    "DOUBLE CAMERA RECORDING...",
+    "info"
+  );
 
   document.getElementById("statusText").innerText =
     "CAPTURING SIDE / FRONT VIDEO";
@@ -1282,8 +1468,10 @@ form.addEventListener("submit", async (e) => {
       document.getElementById("statusText").innerText =
         "ERROR";
 
-      document.getElementById("loading").innerText =
-        data.error || "UNKNOWN ERROR";
+      showLogPopup(
+        data.error || "UNKNOWN ERROR",
+        "error"
+      );
 
       setPreviewCaption("ANALYSIS FAILED");
 
@@ -1309,8 +1497,10 @@ form.addEventListener("submit", async (e) => {
         data.trajectory_quality_message
         || "궤적이 정상적으로 형성되지 않았습니다. 다시 촬영하세요.";
 
-      document.getElementById("loading").innerText =
-        "점수와 턴은 유지됩니다. START ANALYSIS를 눌러 다시 촬영하세요.";
+      showLogPopup(
+        "점수와 턴은 유지됩니다. START ANALYSIS를 눌러 다시 촬영하세요.",
+        "error"
+      );
 
       startButton.disabled = false;
       startButton.innerText = "RETAKE";
@@ -1319,8 +1509,10 @@ form.addEventListener("submit", async (e) => {
 
     }
 
-    document.getElementById("loading").innerText =
-      "AI ANALYZING MOTION...";
+    showLogPopup(
+      "AI ANALYZING MOTION...",
+      "info"
+    );
 
     document.getElementById("statusText").innerText =
       "PROCESSING";
@@ -1403,8 +1595,11 @@ form.addEventListener("submit", async (e) => {
         ? "BOARD UPDATED"
         : "MISS";
 
-    document.getElementById("loading").innerText =
-      "ANALYSIS COMPLETE";
+    showLogPopup(
+      "ANALYSIS COMPLETE",
+      "success",
+      2200
+    );
 
     if (currentPlayer === 1) {
       currentPlayer = 2;
@@ -1440,8 +1635,12 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("statusText").innerText =
       "SERVER ERROR";
 
-    document.getElementById("loading").innerText =
-      "FAILED";
+    showLogPopup(
+      error && error.message
+        ? `FAILED\n${error.message}`
+        : "FAILED",
+      "error"
+    );
 
     setPreviewCaption("SERVER ERROR");
 
