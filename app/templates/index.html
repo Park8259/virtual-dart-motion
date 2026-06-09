@@ -718,10 +718,7 @@
 
           <div
             id="target-top"
-            class="target-circle"
-            data-virtual-x="960"
-            data-virtual-y="302"
-            data-virtual-radius="140">
+            class="target-circle">
             TOP
           </div>
 
@@ -729,28 +726,19 @@
 
             <div
               id="target-left"
-              class="target-circle"
-              data-virtual-x="614"
-              data-virtual-y="540"
-              data-virtual-radius="140">
+              class="target-circle">
               LEFT
             </div>
 
             <div
               id="target-center"
-              class="target-circle center"
-              data-virtual-x="960"
-              data-virtual-y="540"
-              data-virtual-radius="140">
+              class="target-circle center">
               CENTER
             </div>
 
             <div
               id="target-right"
-              class="target-circle"
-              data-virtual-x="1305"
-              data-virtual-y="540"
-              data-virtual-radius="140">
+              class="target-circle">
               RIGHT
             </div>
 
@@ -758,10 +746,7 @@
 
           <div
             id="target-bottom"
-            class="target-circle"
-            data-virtual-x="960"
-            data-virtual-y="777"
-            data-virtual-radius="140">
+            class="target-circle">
             BOTTOM
           </div>
 
@@ -1068,7 +1053,7 @@ function showThrowResultPopup(hit, target) {
 
 }
 
-function evaluateVirtualTarget(endpointXPx, endpointYPx) {
+function evaluateWebTarget(endpointXPx, endpointYPx) {
 
   if (
     endpointXPx === undefined ||
@@ -1088,29 +1073,43 @@ function evaluateVirtualTarget(endpointXPx, endpointYPx) {
     return { target: "center", distancePx: null, hit: false };
   }
 
+  const boardRect =
+    document.getElementById("crossBoard").getBoundingClientRect();
+
+  const webX = boardRect.left + Math.max(0, Math.min(1, endpointX / VIRTUAL_BOARD_WIDTH)) * boardRect.width;
+  const webY = boardRect.top + Math.max(0, Math.min(1, endpointY / VIRTUAL_BOARD_HEIGHT)) * boardRect.height;
+
   let nearestTarget = "center";
   let nearestDistance = Infinity;
-  let nearestRadius = 0;
+  let hitTarget = null;
 
   document
     .querySelectorAll(".target-circle")
     .forEach(targetElement => {
-      const targetX = Number(targetElement.dataset.virtualX);
-      const targetY = Number(targetElement.dataset.virtualY);
-      const targetRadius = Number(targetElement.dataset.virtualRadius);
-      const distance = Math.hypot(endpointX - targetX, endpointY - targetY);
+      const targetRect = targetElement.getBoundingClientRect();
+      const targetX = targetRect.left + targetRect.width / 2;
+      const targetY = targetRect.top + targetRect.height / 2;
+      const distance = Math.hypot(webX - targetX, webY - targetY);
 
       if (distance < nearestDistance) {
         nearestTarget = targetElement.id.replace("target-", "");
         nearestDistance = distance;
-        nearestRadius = targetRadius;
+      }
+
+      if (
+        webX >= targetRect.left &&
+        webX <= targetRect.right &&
+        webY >= targetRect.top &&
+        webY <= targetRect.bottom
+      ) {
+        hitTarget = targetElement.id.replace("target-", "");
       }
     });
 
   return {
-    target: nearestTarget,
+    target: hitTarget || nearestTarget,
     distancePx: nearestDistance,
-    hit: nearestDistance <= nearestRadius
+    hit: hitTarget !== null
   };
 
 }
@@ -1760,23 +1759,25 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("videoText").innerText =
       data.video_name || "UNKNOWN VIDEO";
 
-    const virtualResult =
-      evaluateVirtualTarget(
+    clearTargetHighlight();
+
+    const webResult =
+      evaluateWebTarget(
         data.endpoint_x_px,
         data.endpoint_y_px
       );
 
     const target =
-      virtualResult.target;
+      webResult.target;
 
     showEndpointMarker(
       data.endpoint_x_px,
       data.endpoint_y_px
     );
 
-    // HIT and nearest target are calculated only from CSV endpoint coordinates.
+    // HIT and nearest target follow the rendered web target rectangles.
     const hit =
-      virtualResult.hit;
+      webResult.hit;
 
     if (hit) {
       activateTarget(target);
@@ -1812,8 +1813,8 @@ form.addEventListener("submit", async (e) => {
         : "";
 
     const distanceText =
-      virtualResult.distancePx !== null
-        ? ` / DISTANCE : ${virtualResult.distancePx.toFixed(1)}px`
+      webResult.distancePx !== null
+        ? ` / DISTANCE : ${webResult.distancePx.toFixed(1)}px`
         : "";
 
     const calibrationText =
