@@ -1061,20 +1061,50 @@ function showThrowResultPopup(hit, target) {
 
 }
 
-function isHitResult(data) {
-
-  if (data.hit === true) {
-    return true;
-  }
+function evaluateVirtualTarget(endpointXPx, endpointYPx) {
 
   if (
-    typeof data.hit === "string" &&
-    data.hit.toLowerCase() === "true"
+    endpointXPx === undefined ||
+    endpointYPx === undefined ||
+    endpointXPx === null ||
+    endpointYPx === null ||
+    endpointXPx === "" ||
+    endpointYPx === ""
   ) {
-    return true;
+    return { target: "center", distancePx: null, hit: false };
   }
 
-  return false;
+  const endpointX = Number(endpointXPx);
+  const endpointY = Number(endpointYPx);
+
+  if (!Number.isFinite(endpointX) || !Number.isFinite(endpointY)) {
+    return { target: "center", distancePx: null, hit: false };
+  }
+
+  let nearestTarget = "center";
+  let nearestDistance = Infinity;
+  let nearestRadius = 0;
+
+  document
+    .querySelectorAll(".target-circle")
+    .forEach(targetElement => {
+      const targetX = Number(targetElement.dataset.virtualX);
+      const targetY = Number(targetElement.dataset.virtualY);
+      const targetRadius = Number(targetElement.dataset.virtualRadius);
+      const distance = Math.hypot(endpointX - targetX, endpointY - targetY);
+
+      if (distance < nearestDistance) {
+        nearestTarget = targetElement.id.replace("target-", "");
+        nearestDistance = distance;
+        nearestRadius = targetRadius;
+      }
+    });
+
+  return {
+    target: nearestTarget,
+    distancePx: nearestDistance,
+    hit: nearestDistance <= nearestRadius
+  };
 
 }
 
@@ -1723,21 +1753,23 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("videoText").innerText =
       data.video_name || "UNKNOWN VIDEO";
 
-    let target =
-      data.target || getTargetFromLegacyHit(
-        data.hit_x,
-        data.hit_y
+    const virtualResult =
+      evaluateVirtualTarget(
+        data.endpoint_x_px,
+        data.endpoint_y_px
       );
+
+    const target =
+      virtualResult.target;
 
     showEndpointMarker(
       data.endpoint_x_px,
       data.endpoint_y_px
     );
 
-    // The backend pixel-target CSV is the single source of truth.
-    // The responsive endpoint marker is visual feedback only.
+    // HIT and nearest target are calculated only from CSV endpoint coordinates.
     const hit =
-      isHitResult(data);
+      virtualResult.hit;
 
     if (hit) {
       activateTarget(target);
@@ -1773,8 +1805,8 @@ form.addEventListener("submit", async (e) => {
         : "";
 
     const distanceText =
-      data.distance_px !== undefined && data.distance_px !== null
-        ? ` / DISTANCE : ${Number(data.distance_px).toFixed(1)}px`
+      virtualResult.distancePx !== null
+        ? ` / DISTANCE : ${virtualResult.distancePx.toFixed(1)}px`
         : "";
 
     const calibrationText =
