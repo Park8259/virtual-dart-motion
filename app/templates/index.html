@@ -711,7 +711,10 @@
 
           <div
             id="target-top"
-            class="target-circle">
+            class="target-circle"
+            data-virtual-x="960"
+            data-virtual-y="302"
+            data-virtual-radius="140">
             TOP
           </div>
 
@@ -719,19 +722,28 @@
 
             <div
               id="target-left"
-              class="target-circle">
+              class="target-circle"
+              data-virtual-x="614"
+              data-virtual-y="540"
+              data-virtual-radius="140">
               LEFT
             </div>
 
             <div
               id="target-center"
-              class="target-circle center">
+              class="target-circle center"
+              data-virtual-x="960"
+              data-virtual-y="540"
+              data-virtual-radius="140">
               CENTER
             </div>
 
             <div
               id="target-right"
-              class="target-circle">
+              class="target-circle"
+              data-virtual-x="1305"
+              data-virtual-y="540"
+              data-virtual-radius="140">
               RIGHT
             </div>
 
@@ -739,7 +751,10 @@
 
           <div
             id="target-bottom"
-            class="target-circle">
+            class="target-circle"
+            data-virtual-x="960"
+            data-virtual-y="777"
+            data-virtual-radius="140">
             BOTTOM
           </div>
 
@@ -827,8 +842,9 @@ let currentPlayer = 1;
 let currentRound = 1;
 const MAX_ROUND = 3;
 
-const SCREEN_WIDTH = 1920;
-const SCREEN_HEIGHT = 1080;
+// Invisible coordinate space shared with pixel_targets.py.
+const VIRTUAL_BOARD_WIDTH = 1920;
+const VIRTUAL_BOARD_HEIGHT = 1080;
 
 let gameEnded = false;
 
@@ -1062,63 +1078,6 @@ function isHitResult(data) {
 
 }
 
-function getVisualTargetAtEndpoint() {
-
-  const marker =
-    document.getElementById("endpointMarker");
-
-  if (marker.style.display === "none") {
-    return null;
-  }
-
-  const markerRect =
-    marker.getBoundingClientRect();
-
-  const markerX =
-    markerRect.left + markerRect.width / 2;
-
-  const markerY =
-    markerRect.top + markerRect.height / 2;
-
-  const targetNames = [
-    "top",
-    "left",
-    "center",
-    "right",
-    "bottom"
-  ];
-
-  for (const targetName of targetNames) {
-
-    const selected =
-      document.getElementById(`target-${targetName}`);
-
-    const targetRect =
-      selected.getBoundingClientRect();
-
-    const targetX =
-      targetRect.left + targetRect.width / 2;
-
-    const targetY =
-      targetRect.top + targetRect.height / 2;
-
-    const radius =
-      Math.min(targetRect.width, targetRect.height) / 2;
-
-    if (
-      Math.hypot(
-        markerX - targetX,
-        markerY - targetY
-      ) <= radius
-    ) {
-      return targetName;
-    }
-
-  }
-
-  return null;
-}
-
 function showMessagePopup(title, message) {
 
   document.getElementById("messageTitle").innerText =
@@ -1187,10 +1146,10 @@ function showEndpointMarker(endpointXPx, endpointYPx) {
     board.getBoundingClientRect();
 
   const xRatio =
-    Number(endpointXPx) / SCREEN_WIDTH;
+    Number(endpointXPx) / VIRTUAL_BOARD_WIDTH;
 
   const yRatio =
-    Number(endpointYPx) / SCREEN_HEIGHT;
+    Number(endpointYPx) / VIRTUAL_BOARD_HEIGHT;
 
   const markerX =
     Math.max(
@@ -1775,16 +1734,10 @@ form.addEventListener("submit", async (e) => {
       data.endpoint_y_px
     );
 
-    const visualTarget =
-      getVisualTargetAtEndpoint();
-
-    if (visualTarget) {
-      target = visualTarget;
-    }
-
+    // The backend pixel-target CSV is the single source of truth.
+    // The responsive endpoint marker is visual feedback only.
     const hit =
-      isHitResult(data)
-      || visualTarget !== null;
+      isHitResult(data);
 
     if (hit) {
       activateTarget(target);
