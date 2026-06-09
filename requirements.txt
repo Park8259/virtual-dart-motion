@@ -3,3 +3,7 @@ opencv-contrib-python==4.11.0.86
 numpy<2
 pandas
 matplotlib
+fastapi
+uvicorn
+jinja2
+python-multipart

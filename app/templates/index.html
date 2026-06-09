@@ -656,6 +656,31 @@ form.addEventListener("submit", async (e) => {
 
     }
 
+    if (data.retry_required || data.trajectory_valid === false) {
+
+      clearTargetHighlight();
+      clearEndpointMarker();
+
+      document.getElementById("videoText").innerText =
+        data.video_name || "UNKNOWN VIDEO";
+
+      document.getElementById("statusText").innerText =
+        "RETAKE REQUIRED";
+
+      document.getElementById("hitText").innerText =
+        data.trajectory_quality_message
+        || "궤적이 정상적으로 형성되지 않았습니다. 다시 촬영하세요.";
+
+      document.getElementById("loading").innerText =
+        "점수와 턴은 유지됩니다. START ANALYSIS를 눌러 다시 촬영하세요.";
+
+      startButton.disabled = false;
+      startButton.innerText = "RETAKE";
+
+      return;
+
+    }
+
     document.getElementById("loading").innerText =
       "AI ANALYZING MOTION...";
 
