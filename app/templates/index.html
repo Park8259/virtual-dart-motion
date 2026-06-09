@@ -240,6 +240,89 @@
     .hidden-status {
       display: none;
     }
+
+    .throw-result-popup {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      z-index: 3000;
+      min-width: 360px;
+      padding: 34px 54px;
+      border-radius: 26px;
+      display: none;
+      pointer-events: none;
+      text-align: center;
+      font-weight: bold;
+      letter-spacing: 2px;
+      opacity: 0;
+      backdrop-filter: blur(8px);
+    }
+
+    .throw-result-popup.show {
+      display: block;
+      animation:
+        throwPopupIn 0.25s ease-out forwards,
+        throwPopupOut 0.45s ease-in forwards 4.55s;
+    }
+
+    .throw-result-popup.hit {
+      color: #00ff99;
+      background: rgba(0, 255, 153, 0.12);
+      border: 2px solid #00ff99;
+      box-shadow:
+        0 0 24px rgba(0, 255, 153, 0.95),
+        0 0 60px rgba(0, 255, 153, 0.55),
+        inset 0 0 26px rgba(0, 255, 153, 0.18);
+    }
+
+    .throw-result-popup.miss {
+      color: #ff4444;
+      background: rgba(255, 68, 68, 0.12);
+      border: 2px solid #ff4444;
+      box-shadow:
+        0 0 24px rgba(255, 68, 68, 0.95),
+        0 0 60px rgba(255, 68, 68, 0.55),
+        inset 0 0 26px rgba(255, 68, 68, 0.18);
+    }
+
+    .throw-result-main {
+      font-size: 72px;
+      line-height: 1;
+      margin-bottom: 14px;
+      text-shadow:
+        0 0 18px currentColor;
+    }
+
+    .throw-result-sub {
+      font-size: 26px;
+      line-height: 1.2;
+      opacity: 0.95;
+    }
+
+    @keyframes throwPopupIn {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.82);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    @keyframes throwPopupOut {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -58%) scale(0.96);
+      }
+    }
   </style>
 </head>
 
@@ -252,6 +335,22 @@
   title="Calibration Settings">
   ⚙
 </button>
+
+<div
+  id="throwResultPopup"
+  class="throw-result-popup">
+
+  <div
+    id="throwResultMain"
+    class="throw-result-main">
+  </div>
+
+  <div
+    id="throwResultSub"
+    class="throw-result-sub">
+  </div>
+
+</div>
 
 <div
   id="settingsModal"
@@ -515,6 +614,8 @@ const SCREEN_HEIGHT = 1080;
 
 let gameEnded = false;
 
+let throwResultPopupTimer = null;
+
 let playerScores = {
   1: 0,
   2: 0
@@ -536,6 +637,88 @@ function clearEndpointMarker() {
     document.getElementById("endpointMarker");
 
   marker.style.display = "none";
+
+}
+
+function clearThrowResultPopup() {
+
+  if (throwResultPopupTimer) {
+    clearTimeout(throwResultPopupTimer);
+    throwResultPopupTimer = null;
+  }
+
+  const popup =
+    document.getElementById("throwResultPopup");
+
+  popup.classList.remove(
+    "show",
+    "hit",
+    "miss"
+  );
+
+  popup.style.display =
+    "none";
+
+  document.getElementById("throwResultMain").innerText =
+    "";
+
+  document.getElementById("throwResultSub").innerText =
+    "";
+
+}
+
+function showThrowResultPopup(hit, target) {
+
+  clearThrowResultPopup();
+
+  const popup =
+    document.getElementById("throwResultPopup");
+
+  const mainText =
+    document.getElementById("throwResultMain");
+
+  const subText =
+    document.getElementById("throwResultSub");
+
+  const normalizedTarget =
+    target
+      ? String(target).toUpperCase()
+      : "UNKNOWN";
+
+  if (hit) {
+
+    popup.classList.add("hit");
+
+    mainText.innerText =
+      "HIT";
+
+    subText.innerText =
+      normalizedTarget;
+
+  }
+  else {
+
+    popup.classList.add("miss");
+
+    mainText.innerText =
+      "MISS";
+
+    subText.innerText =
+      `NEAREST : ${normalizedTarget}`;
+
+  }
+
+  popup.style.display =
+    "block";
+
+  void popup.offsetWidth;
+
+  popup.classList.add("show");
+
+  throwResultPopupTimer =
+    setTimeout(() => {
+      clearThrowResultPopup();
+    }, 5000);
 
 }
 
@@ -902,6 +1085,7 @@ function resetGame() {
 
   clearTargetHighlight();
   clearEndpointMarker();
+  clearThrowResultPopup();
   resetPreviewVideo();
 
 }
@@ -1029,6 +1213,7 @@ form.addEventListener("submit", async (e) => {
 
   clearTargetHighlight();
   clearEndpointMarker();
+  clearThrowResultPopup();
   setPreviewLoading();
 
   const p1 =
@@ -1120,6 +1305,11 @@ form.addEventListener("submit", async (e) => {
     updatePreviewVideo(
       data.preview_video,
       data.video_name
+    );
+
+    showThrowResultPopup(
+      hit,
+      target
     );
 
     const score =
