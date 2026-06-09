@@ -20,7 +20,7 @@ from src.render_analysis_preview import (
     render_preview,
     render_release_frame_image,
 )
-from src.led import run_once
+from src.mqtt_led_publisher import publish_led_result
 
 
 def find_latest_video(videos_dir):
@@ -309,6 +309,7 @@ def parse_args():
         default=5,
         help="Frame offset added to the side release frame for front camera direction.",
     )
+
     parser.add_argument(
         "--front-horizontal-gain",
         type=float,
@@ -350,6 +351,7 @@ def parse_args():
         default=0.5,
         help="Minimum MediaPipe landmark visibility used for side camera tracking.",
     )
+
     parser.add_argument(
         "--release-offset-frames",
         type=int,
@@ -383,6 +385,7 @@ def parse_args():
         default=True,
         help="Mirror the final pixel target endpoint across the vertical center line.",
     )
+
     parser.add_argument(
         "--track-object",
         action="store_true",
@@ -464,22 +467,34 @@ def run_analysis(
     object_release_lead_frames,
 ):
     run_name = build_run_name(video_path, flip_horizontal)
+
     front_run_name = None
+
     if front_video:
         front_run_name = build_run_name(front_video, front_flip_horizontal)
 
     output_dir = Path("output") / run_name
 
     landmarks_csv = output_dir / f"{run_name}_landmarks.csv"
+
     front_landmarks_csv = (
-        output_dir / f"{front_run_name}_landmarks.csv" if front_run_name else None
+        output_dir / f"{front_run_name}_landmarks.csv"
+        if front_run_name
+        else None
     )
+
     front_pose_preview = (
-        output_dir / f"{front_run_name}_pose_preview.mp4" if front_run_name else None
+        output_dir / f"{front_run_name}_pose_preview.mp4"
+        if front_run_name
+        else None
     )
+
     front_direction_png = (
-        output_dir / f"{front_run_name}_direction.png" if front_run_name else None
+        output_dir / f"{front_run_name}_direction.png"
+        if front_run_name
+        else None
     )
+
     pose_preview = output_dir / f"{run_name}_pose_preview.mp4"
     analysis_csv = output_dir / f"{run_name}_analysis.csv"
     trajectory_csv = output_dir / f"{run_name}_trajectory.csv"
@@ -645,6 +660,7 @@ def run_analysis(
         trajectory_csv=trajectory_csv,
         expected_endpoint_x=screen_endpoint_x,
     )
+
     print(trajectory_quality["trajectory_quality_message"])
 
     print("\n5. 가상 보드 결과 이미지 생성 중...")
@@ -720,10 +736,19 @@ def run_analysis(
     )
 
     if trajectory_quality["trajectory_valid"]:
-        print("\n9. LED 결과 표시 중...")
-        run_once()
+        print("\n9. MQTT LED 결과 전송 중...")
+
+        try:
+            publish_led_result()
+
+        except Exception as exc:
+            print(
+                f"[MQTT LED WARNING] LED MQTT publish failed: {exc}",
+                file=sys.stderr
+            )
+
     else:
-        print("\n9. 비정상 궤적이므로 LED 결과 표시를 건너뜁니다.")
+        print("\n9. 비정상 궤적이므로 MQTT LED 결과 전송을 건너뜁니다.")
 
 
 def main():
@@ -776,7 +801,7 @@ def main():
         return 1
 
     return 0
-
+#안녕
 
 if __name__ == "__main__":
     raise SystemExit(main())
