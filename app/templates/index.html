@@ -182,59 +182,74 @@
         0 0 18px rgba(0, 132, 255, 0.45);
     }
 
-    .preview-box {
-      margin-top: 18px;
-      padding: 14px;
-      border-radius: 14px;
-      background: rgba(17, 24, 39, 0.9);
-      border: 1px solid rgba(255,255,255,0.06);
+    .brand-logo-box {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      background:
+        radial-gradient(
+          circle at 50% 42%,
+          rgba(48, 217, 219, 0.13),
+          rgba(17, 24, 39, 0.92) 54%,
+          rgba(2, 4, 11, 0.86) 100%
+        );
+      border: 1px solid rgba(126, 200, 255, 0.16);
       box-shadow:
-        0 0 14px rgba(0, 140, 255, 0.10);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .preview-box h3 {
-      margin: 0 0 10px 0;
-      color: #9ecfff;
-      font-size: 15px;
-    }
-
-    .preview-video {
-      width: 100%;
-      max-height: 260px;
-      border-radius: 12px;
-      background: #02040b;
-      border: 1px solid #1f2a44;
-      display: none;
-      object-fit: contain;
-    }
-
-    .preview-placeholder {
-      flex: 1;
-      min-height: 150px;
-      border-radius: 12px;
-      border: 1px dashed #1f2a44;
-      color: #9ca3af;
+        0 0 16px rgba(0, 140, 255, 0.14),
+        inset 0 0 28px rgba(78, 161, 255, 0.06);
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      font-size: 13px;
-      line-height: 1.4;
-      padding: 12px;
-      box-sizing: border-box;
-      background: rgba(2, 4, 11, 0.45);
+      overflow: hidden;
+      position: relative;
     }
 
-    .preview-caption {
-      margin-top: 10px;
-      color: #9ca3af;
-      font-size: 12px;
-      line-height: 1.35;
-      word-break: break-word;
+    .brand-logo-box::before {
+      content: none;
+    }
+
+    .brand-logo-frame {
+      width: min(100%, 204px);
+      height: 184px;
+      border-radius: 20px;
+      border: 2px solid rgba(190, 231, 255, 0.72);
+      background: #ffffff;
+      box-shadow:
+        0 0 0 1px rgba(22, 43, 72, 0.85),
+        0 10px 28px rgba(0, 0, 0, 0.38),
+        0 0 18px rgba(78, 161, 255, 0.32),
+        0 0 30px rgba(48, 217, 219, 0.14);
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-logo {
+      width: 100%;
+      height: auto;
+      display: block;
+      transform: translateY(-10px);
+    }
+
+    .brand-logo-box::after {
+      content: none;
+    }
+
+    #loading {
+      margin-top: auto;
+      max-height: 78px;
+      overflow-y: auto;
+      padding-top: 10px;
+      font-size: 13px;
+    }
+
+    #loading:empty {
+      padding-top: 0;
+    }
+
+    .dashboard > div {
+      min-height: 0;
     }
 
     .hidden-status {
@@ -448,8 +463,6 @@
               START ANALYSIS
             </button>
           </form>
-
-          <div id="loading"></div>
         </div>
 
         <button
@@ -458,32 +471,16 @@
           RESET GAME
         </button>
 
-        <div class="preview-box">
-          <h3>Latest Throw Preview</h3>
+        <div id="loading"></div>
 
-          <video
-            id="previewVideo"
-            class="preview-video"
-            controls
-            muted
-            playsinline>
-            <source
-              id="previewVideoSource"
-              src=""
-              type="video/mp4">
-          </video>
-
-          <div
-            id="previewPlaceholder"
-            class="preview-placeholder">
-            분석 완료 후<br>
-            최신 analysis preview 영상이 표시됩니다.
-          </div>
-
-          <div
-            id="previewCaption"
-            class="preview-caption">
-            NO PREVIEW
+        <div
+          class="brand-logo-box"
+          aria-label="Airshot logo">
+          <div class="brand-logo-frame">
+            <img
+              class="brand-logo"
+              src="/static/images/airshot-logo.png"
+              alt="Airshot Motion is Your Aim IoT Dart Simulation">
           </div>
         </div>
 
@@ -961,6 +958,10 @@ function resetPreviewVideo() {
   const caption =
     document.getElementById("previewCaption");
 
+  if (!previewVideo || !previewSource || !placeholder || !caption) {
+    return;
+  }
+
   previewVideo.pause();
 
   previewSource.src =
@@ -992,6 +993,10 @@ function updatePreviewVideo(previewVideoPath, videoName) {
 
   const caption =
     document.getElementById("previewCaption");
+
+  if (!previewVideo || !previewSource || !placeholder || !caption) {
+    return;
+  }
 
   if (!previewVideoPath) {
 
@@ -1037,6 +1042,10 @@ function setPreviewLoading() {
   const caption =
     document.getElementById("previewCaption");
 
+  if (!placeholder || !caption) {
+    return;
+  }
+
   placeholder.style.display =
     "flex";
 
@@ -1045,6 +1054,20 @@ function setPreviewLoading() {
 
   caption.innerText =
     "ANALYZING...";
+
+}
+
+function setPreviewCaption(text) {
+
+  const caption =
+    document.getElementById("previewCaption");
+
+  if (!caption) {
+    return;
+  }
+
+  caption.innerText =
+    text;
 
 }
 
@@ -1262,8 +1285,7 @@ form.addEventListener("submit", async (e) => {
       document.getElementById("loading").innerText =
         data.error || "UNKNOWN ERROR";
 
-      document.getElementById("previewCaption").innerText =
-        "ANALYSIS FAILED";
+      setPreviewCaption("ANALYSIS FAILED");
 
       startButton.disabled = false;
       startButton.innerText = "START ANALYSIS";
@@ -1421,8 +1443,7 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("loading").innerText =
       "FAILED";
 
-    document.getElementById("previewCaption").innerText =
-      "SERVER ERROR";
+    setPreviewCaption("SERVER ERROR");
 
   }
 
