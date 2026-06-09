@@ -336,10 +336,6 @@ button:disabled {
 
 .cross-board {
 
-  --virtual-board-width: 1920;
-  --virtual-board-height: 1080;
-  --virtual-target-radius: 140;
-
   position: relative;
   flex: 1;
   width: 100%;
