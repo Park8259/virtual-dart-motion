@@ -336,31 +336,15 @@ button:disabled {
 
 .cross-board {
 
+  --virtual-board-width: 1920;
+  --virtual-board-height: 1080;
+  --virtual-target-radius: 140;
+
+  position: relative;
   flex: 1;
-
-  display: grid;
-
-  grid-template-columns:
-    140px
-    140px
-    140px;
-
-  grid-template-rows:
-    140px
-    140px
-    140px;
-
-  gap: 25px;
-
-  justify-content: center;
-
-  align-content: center;
-
-  align-items: center;
-
-  justify-items: center;
-
-  padding-bottom: 30px;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 
 }
 
@@ -372,16 +356,18 @@ button:disabled {
 
 .target-circle {
 
+  position: absolute;
+
   width: 140px;
 
   height: 140px;
 
-  border-radius: 50%;
+  transform: translate(-50%, -50%);
+
+  border-radius: 8px;
 
   background:
-    radial-gradient(circle at center,
-      #101a2e 0%,
-      #09111f 70%);
+    linear-gradient(180deg, #101a2e 0%, #09111f 100%);
 
   border: 4px solid #22c55e;
 
@@ -412,27 +398,25 @@ button:disabled {
 
 #target-top {
 
-  grid-column: 2;
+  left: 50%;
 
-  grid-row: 1;
-
-  transform: translateY(10px);
+  top: calc(50% - 180px);
 
 }
 
 #target-left {
 
-  grid-column: 1;
+  left: calc(50% - 180px);
 
-  grid-row: 2;
+  top: 50%;
 
 }
 
 #target-center {
 
-  grid-column: 2;
+  left: 50%;
 
-  grid-row: 2;
+  top: 50%;
 
   border-color: #facc15;
 
@@ -443,19 +427,17 @@ button:disabled {
 
 #target-right {
 
-  grid-column: 3;
+  left: calc(50% + 180px);
 
-  grid-row: 2;
+  top: 50%;
 
 }
 
 #target-bottom {
 
-  grid-column: 2;
+  left: 50%;
 
-  grid-row: 3;
-
-  transform: translateY(-10px);
+  top: calc(50% + 180px);
 
 }
 
@@ -467,7 +449,7 @@ button:disabled {
 
   color: #00131a;
 
-  transform: scale(1.08);
+  transform: translate(-50%, -50%) scale(1.08);
 
   box-shadow:
     0 0 20px #00e5ff,
@@ -540,19 +522,19 @@ button:disabled {
 
   0% {
 
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
 
   }
 
   50% {
 
-    transform: scale(1.15);
+    transform: translate(-50%, -50%) scale(1.15);
 
   }
 
   100% {
 
-    transform: scale(1.08);
+    transform: translate(-50%, -50%) scale(1.08);
 
   }
 
