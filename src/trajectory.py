@@ -238,8 +238,8 @@ def build_extended_trajectory(
         progress = i / (steps - 1)
         t = duration * progress
         x = release_x + delta_x * progress
-        visual_drop = 4.0 * arc_height * progress * (1.0 - progress)
-        y = release_y + slope * delta_x * progress + visual_drop
+        visual_lift = 4.0 * arc_height * progress * (1.0 - progress)
+        y = release_y + slope * delta_x * progress - visual_lift
         points.append(
             {
                 "point_index": i,
